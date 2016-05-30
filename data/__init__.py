@@ -31,7 +31,6 @@ def load_file_with_cache(name, reader, f):
 def read_item_info(f):
     res = pd.read_csv(f, index_col='itemID')
     res['images_array'] = res['images_array'].apply(lambda x: list(map(int, x.split(','))) if pd.notnull(x) else [])
-    res['attrsJSON'] = res['attrsJSON'].apply(lambda x: json.loads if isinstance(x, str) else {})
     res['attrsJSON'] = res['attrsJSON'].apply(lambda x: json.loads(x) if isinstance(x, str) else {})
 
     return res
