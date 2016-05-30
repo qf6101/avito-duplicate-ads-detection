@@ -15,6 +15,8 @@ def with_cache(cache_file, g):
                     protocol=pickle.HIGHEST_PROTOCOL)
         return res
 
+def generate_with_cache(name, g):
+    return with_cache(os.path.join(cache_dir, name + '.pickle'), g)
 
 def load_file_with_cache(name, reader, f):
     return with_cache(os.path.join(cache_dir, name + '.pickle'),

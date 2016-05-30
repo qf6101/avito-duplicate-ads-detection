@@ -1,8 +1,7 @@
-from data import *
+from .item import *
 import pandas as pd
 
 __all__ = ['gen_simple_feature', 'gen_features']
-
 
 def jaccard(a, b):
     a = set(a)
@@ -13,7 +12,6 @@ def jaccard(a, b):
         return 0.0
     else:
         return n_intersection / n_union
-
 
 def gen_simple_feature(a, b):
     feats = {}
@@ -28,7 +26,6 @@ def gen_simple_feature(a, b):
     feats['attrsJSON_item_jaccard'] = jaccard(a['attrsJSON'].items(), b['attrsJSON'].items())
 
     return feats
-
 
 def gen_features(g, pairs):
     X = []
