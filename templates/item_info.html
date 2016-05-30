@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>itemID: {{ itemID }}</title>
+</head>
+<body>
+<h1>itemID: {{ itemID }}</h1>
+<h2>title</h2>
+{{ item.title }}
+<h2>description</h2>
+{{ item.description }}
+<h2>categoryID</h2>
+{{ item.categoryID }}
+<h2>price</h2>
+{{ item.price }}
+<h2> locationID</h2>
+{{ item.locationID }}
+<h2> location </h2>
+<a href="https://maps.google.com/?q={{item.lat}},{{item.lon}}">{{ item.lat }}, {{item.lon }}</a>
+<h2> metroID </h2>
+{{ item.metroID }}
+<h2> attrsJSON </h2>
+<dl>
+    {% for k, v in item.attrsJSON.items() %}
+    <dt>{{ k }}</dt> <dd>{{ v }}</dd>
+    {% endfor %}
+</dl>
+</body>
+</html>
