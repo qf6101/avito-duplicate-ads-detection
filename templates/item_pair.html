@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+{% from "macros.html" import show_item %}
+<head>
+    <meta charset="UTF-8">
+    <title>item pair: {{ itemID1 }}, {{ itemID2 }}</title>
+    <style>
+        {# do not mess with class used in jupyter notebook #}
+        .item_info_container{
+            display:flex;
+        }
+        .item_info{
+            width: 50%;
+        }
+        .item_info
+    </style>
+</head>
+<body>
+<div class="item_info_container">
+    <div class="item_info">
+        <h1>itemID: {{ itemID1 }}</h1>
+        {{ show_item(item1) }}
+    </div>
+    <div class="item_info">
+        <h1>itemID: {{ itemID2 }}</h1>
+        {{ show_item(item2) }}
+    </div>
+</div>
+</body>
+</html>
