@@ -1,35 +1,11 @@
 from . import *
 import pandas as pd
 
-__all__ = ['gen_simple_feature', 'gen_features',
-           'simple_features_train', 'simple_features_test']
+__all__ = ['gen_features',
+           'simple_features_train', 'simple_features_test',
+           'title_features_train', 'title_features_test']
 
-
-def jaccard(a, b):
-    a = set(a)
-    b = set(b)
-    n_intersection = len(a.intersection(b))
-    n_union = len(a) + len(b) - n_intersection
-    if n_union == 0:
-        return 0.0
-    else:
-        return n_intersection / n_union
-
-
-def gen_simple_feature(a, b):
-    feats = {}
-    for name in ['title', 'description', 'categoryID', 'locationID', 'metroID']:
-        feats['same_' + name] = a[name] == b[name]
-    feats['same_lat_lon'] = (a['lat'] == b['lat']) and (a['lon'] == b['lon'])
-
-    price_diff = abs(a['price'] - b['price'])
-    feats['price_diff_ratio'] = price_diff / (a['price'] + b['price'])
-
-    feats['attrsJSON_key_jaccard'] = jaccard(a['attrsJSON'].keys(), b['attrsJSON'].keys())
-    feats['attrsJSON_item_jaccard'] = jaccard(a['attrsJSON'].items(), b['attrsJSON'].items())
-
-    return feats
-
+from feature import *
 
 def gen_features(g, pairs):
     X = []
@@ -44,3 +20,7 @@ simple_features_train = generate_with_cache('simple_features_train',
                                             lambda: gen_features(gen_simple_feature, item_pairs_train))
 simple_features_test = generate_with_cache('simple_features_test',
                                            lambda: gen_features(gen_simple_feature, item_pairs_test))
+title_features_train = generate_with_cache('title_features_train',
+                                            lambda: gen_features(gen_title_feature, item_pairs_train))
+title_features_test = generate_with_cache('title_features_test',
+                                           lambda: gen_features(gen_title_feature, item_pairs_test))
