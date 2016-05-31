@@ -1,9 +1,20 @@
 import numpy as np
+import os
+import pickle
 
 def df_sample_n(data, n, seed=None):
     rng = np.random.RandomState(seed)
     N = data.shape[0]
     return data.iloc[rng.choice(range(N), n)]
+
+def with_cache(cache_file, g):
+    if os.path.exists(cache_file):
+        return pickle.load(open(cache_file, 'rb'))
+    else:
+        res = g()
+        pickle.dump(res, open(cache_file, 'wb'),
+                    protocol=pickle.HIGHEST_PROTOCOL)
+        return res
 
 def list_to_location_map(l):
     return dict(zip(l, range(len(l))))
