@@ -1,7 +1,9 @@
-from .item import *
+from . import *
 import pandas as pd
 
-__all__ = ['gen_simple_feature', 'gen_features']
+__all__ = ['gen_simple_feature', 'gen_features',
+           'simple_features_train', 'simple_features_test']
+
 
 def jaccard(a, b):
     a = set(a)
@@ -12,6 +14,7 @@ def jaccard(a, b):
         return 0.0
     else:
         return n_intersection / n_union
+
 
 def gen_simple_feature(a, b):
     feats = {}
@@ -27,6 +30,7 @@ def gen_simple_feature(a, b):
 
     return feats
 
+
 def gen_features(g, pairs):
     X = []
     for i, j in zip(pairs['itemID_1'], pairs['itemID_2']):
@@ -34,3 +38,9 @@ def gen_features(g, pairs):
         b = get_item(j)
         X.append(g(a, b))
     return pd.DataFrame(X)
+
+
+simple_features_train = generate_with_cache('simple_features_train',
+                                            lambda: gen_features(gen_simple_feature, item_pairs_train))
+simple_features_test = generate_with_cache('simple_features_test',
+                                           lambda: gen_features(gen_simple_feature, item_pairs_test))
