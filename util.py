@@ -34,3 +34,23 @@ class DataFrameNDArrayWrapper:
         i = self.row_name_to_loc[row_name]
         row = self.d[i]
         return OrderedDict(zip(self.column_names, row))
+
+
+def ngrams(tokens, ngram_range, stop_words=None):
+    """Turn tokens into a sequence of n-grams after stop words filtering"""
+    # handle stop words
+    if stop_words is not None:
+        tokens = [w for w in tokens if w not in stop_words]
+
+    # handle token n-grams
+    min_n, max_n = ngram_range
+    if max_n != 1:
+        original_tokens = tokens
+        tokens = []
+        n_original_tokens = len(original_tokens)
+        for n in range(min_n,
+                        min(max_n + 1, n_original_tokens + 1)):
+            for i in range(n_original_tokens - n + 1):
+                tokens.append(" ".join(original_tokens[i: i + n]))
+
+    return tokens

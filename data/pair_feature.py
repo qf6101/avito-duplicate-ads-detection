@@ -3,7 +3,8 @@ import pandas as pd
 
 __all__ = ['gen_features',
            'simple_features_train', 'simple_features_test',
-           'title_features_train', 'title_features_test']
+           'title_features_train', 'title_features_test',
+           'description_features_train', 'description_features_test']
 
 from feature import *
 
@@ -24,3 +25,8 @@ title_features_train = generate_with_cache('title_features_train',
                                             lambda: gen_features(gen_title_feature, item_pairs_train))
 title_features_test = generate_with_cache('title_features_test',
                                            lambda: gen_features(gen_title_feature, item_pairs_test))
+description_features_train = generate_with_cache('description_features_train',
+                                           lambda: gen_features(gen_description_feature, item_pairs_train))
+description_features_test = generate_with_cache('description_features_test',
+                                          lambda: gen_features(gen_description_feature, item_pairs_test))
+
