@@ -1,5 +1,5 @@
 import re
-from Levenshtein import jaro_winkler
+from Levenshtein import jaro_winkler, distance as edit_distance
 
 __all__ = ['gen_simple_feature', 'gen_title_feature', 'gen_description_feature']
 
@@ -19,11 +19,11 @@ from util import word_ngrams, char_ngrams
 
 
 def word_jaccard_ngram(a, b, n):
-    return jaccard(word_ngrams(a, (n, n)), word_ngrams(b, (n, n)))
+    return jaccard(word_ngrams(a, (n, n), binary=True), word_ngrams(b, (n, n), binary=True))
 
 
 def char_jaccard_ngram(a, b, n):
-    return jaccard(char_ngrams(a, (n, n)), char_ngrams(b, (n, n)))
+    return jaccard(char_ngrams(a, (n, n), binary=True), char_ngrams(b, (n, n), binary=True))
 
 
 def create_numeric_comparision(feats, a, b, name):
@@ -66,8 +66,8 @@ tokenizer1_pattern = re.compile("\w+")
 def tokenize1(x):
     return tokenizer1_pattern.findall(x)
 
-
-def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[], ngrams_char_jaccard=[3, 4, 5]):
+def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[],
+                                use_char_ngram_jaccard=False, ngrams_char_jaccard=[3, 4, 5]):
     if not isinstance(sa, str) or not isinstance(sb, str):
         return {}
     feats = {}
@@ -84,20 +84,19 @@ def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[], ngram
         feats[prefix + 'word0_jaccard_{}gram'.format(n)] = word_jaccard_ngram(wa0, wb0, n)
         feats[prefix + 'word1_jaccard_{}gram'.format(n)] = word_jaccard_ngram(wa1, wb1, n)
 
-    for n in ngrams_char_jaccard:
-        feats[prefix + 'char_jaccard_{}gram'.format(n)] = char_jaccard_ngram(sa, sb, n)
+    if use_char_ngram_jaccard:
+        for n in ngrams_char_jaccard:
+            feats[prefix + 'char_jaccard_{}gram'.format(n)] = char_jaccard_ngram(sa, sb, n)
 
     feats[prefix + 'jw'] = jaro_winkler(sa, sb)
+    feats[prefix + 'edit_distance_ratio'] = edit_distance(sa, sb)/(len(sa)+len(sb))
 
     return feats
 
-
 def gen_title_feature(a, b):
     return gen_text_similarity_feature(a['title'], b['title'],
-                                       prefix='title_', ngrams_char_jaccard=[3, 4, 5])
-
+                                       prefix='title_', use_char_ngram_jaccard=True, ngrams_char_jaccard=[3, 4, 5])
 
 def gen_description_feature(a, b):
     return gen_text_similarity_feature(a['description'], b['description'],
-                                       prefix='description_', ngrams_word_jaccard=[2, 3, 4],
-                                       ngrams_char_jaccard=[3, 4, 5])
+                                       prefix='description_', ngrams_word_jaccard=[2, 3, 4])

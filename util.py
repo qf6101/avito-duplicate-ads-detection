@@ -37,8 +37,7 @@ class DataFrameNDArrayWrapper:
         row = self.d[i]
         return OrderedDict(zip(self.column_names, row))
 
-
-def word_ngrams(tokens, ngram_range, stop_words=None):
+def word_ngrams(tokens, ngram_range, stop_words=None, binary=False):
     """Turn tokens into a sequence of n-grams after stop words filtering"""
     # handle stop words
     if stop_words is not None:
@@ -48,25 +47,39 @@ def word_ngrams(tokens, ngram_range, stop_words=None):
     min_n, max_n = ngram_range
     if max_n != 1:
         original_tokens = tokens
-        tokens = []
+        if binary:
+            tokens = set()
+        else:
+            tokens = []
         n_original_tokens = len(original_tokens)
         for n in range(min_n,
                         min(max_n + 1, n_original_tokens + 1)):
             for i in range(n_original_tokens - n + 1):
-                tokens.append(" ".join(original_tokens[i: i + n]))
+                token = " ".join(original_tokens[i: i + n])
+                if binary:
+                    tokens.add(token)
+                else:
+                    tokens.append(token)
 
     return tokens
 
 _white_spaces = re.compile(r"\s\s+")
-def char_ngrams(text_document, ngram_range):
+def char_ngrams(text_document, ngram_range, binary=False):
     """Tokenize text_document into a sequence of character n-grams"""
     # normalize white spaces
     text_document = _white_spaces.sub(" ", text_document)
 
     text_len = len(text_document)
-    ngrams = []
+    if binary:
+        ngrams = set()
+    else:
+        ngrams = []
     min_n, max_n = ngram_range
     for n in range(min_n, min(max_n + 1, text_len + 1)):
         for i in range(text_len - n + 1):
-            ngrams.append(text_document[i: i + n])
+            token = text_document[i: i + n]
+            if binary:
+                ngrams.add(token)
+            else:
+                ngrams.append(token)
     return ngrams
