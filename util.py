@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import os
 import pickle
@@ -36,7 +38,7 @@ class DataFrameNDArrayWrapper:
         return OrderedDict(zip(self.column_names, row))
 
 
-def ngrams(tokens, ngram_range, stop_words=None):
+def word_ngrams(tokens, ngram_range, stop_words=None):
     """Turn tokens into a sequence of n-grams after stop words filtering"""
     # handle stop words
     if stop_words is not None:
@@ -54,3 +56,17 @@ def ngrams(tokens, ngram_range, stop_words=None):
                 tokens.append(" ".join(original_tokens[i: i + n]))
 
     return tokens
+
+_white_spaces = re.compile(r"\s\s+")
+def char_ngrams(text_document, ngram_range):
+    """Tokenize text_document into a sequence of character n-grams"""
+    # normalize white spaces
+    text_document = _white_spaces.sub(" ", text_document)
+
+    text_len = len(text_document)
+    ngrams = []
+    min_n, max_n = ngram_range
+    for n in range(min_n, min(max_n + 1, text_len + 1)):
+        for i in range(text_len - n + 1):
+            ngrams.append(text_document[i: i + n])
+    return ngrams

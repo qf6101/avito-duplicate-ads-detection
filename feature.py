@@ -1,6 +1,8 @@
 import re
+from Levenshtein import jaro_winkler
 
-__all__ =  ['gen_simple_feature', 'gen_title_feature', 'gen_description_feature']
+__all__ = ['gen_simple_feature', 'gen_title_feature', 'gen_description_feature']
+
 
 def jaccard(a, b):
     a = set(a)
@@ -12,22 +14,31 @@ def jaccard(a, b):
     else:
         return n_intersection / n_union
 
-from util import ngrams
-def jaccard_ngram(a, b, n):
-    return jaccard(ngrams(a, (n, n)), ngrams(b, (n, n)))
+
+from util import word_ngrams, char_ngrams
+
+
+def word_jaccard_ngram(a, b, n):
+    return jaccard(word_ngrams(a, (n, n)), word_ngrams(b, (n, n)))
+
+
+def char_jaccard_ngram(a, b, n):
+    return jaccard(char_ngrams(a, (n, n)), char_ngrams(b, (n, n)))
+
 
 def create_numeric_comparision(feats, a, b, name):
-    #min(nan, 1) = 1
-    feats[name+'_min'] = min(a, b)
-    feats[name+'_max'] = max(a, b)
-    feats[name+'_diff_ratio'] = abs(a-b)/(a+b)
+    # min(nan, 1) = 1
+    feats[name + '_min'] = min(a, b)
+    feats[name + '_max'] = max(a, b)
+    feats[name + '_diff_ratio'] = abs(a - b) / (a + b)
+
 
 def gen_simple_feature(a, b):
     feats = {}
     for name in ['title', 'description', 'price', 'categoryID', 'locationID', 'metroID']:
         feats['same_' + name] = a[name] == b[name]
     feats['same_lat_lon'] = (a['lat'] == b['lat']) and (a['lon'] == b['lon'])
-    feats['location_distance'] = ((a['lat']-b['lat'])**2+(a['lon']-b['lon'])**2)**(1/2)
+    feats['location_distance'] = ((a['lat'] - b['lat']) ** 2 + (a['lon'] - b['lon']) ** 2) ** (1 / 2)
 
     create_numeric_comparision(feats, a['price'], b['price'], 'price')
     try:
@@ -44,14 +55,19 @@ def gen_simple_feature(a, b):
 
     return feats
 
+
 def tokenize0(x):
     return x.split()
 
+
 tokenizer1_pattern = re.compile("\w+")
+
+
 def tokenize1(x):
     return tokenizer1_pattern.findall(x)
 
-def gen_text_similarity_feature(sa, sb, prefix='', ngrams=[]):
+
+def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[], ngrams_char_jaccard=[3, 4, 5]):
     if not isinstance(sa, str) or not isinstance(sb, str):
         return {}
     feats = {}
@@ -61,18 +77,27 @@ def gen_text_similarity_feature(sa, sb, prefix='', ngrams=[]):
     wa1 = tokenize1(sa)
     wb1 = tokenize1(sb)
 
-    feats[prefix+'word0_jaccard'] = jaccard(wa0, wb0)
-    feats[prefix+'word1_jaccard'] = jaccard(wa1, wb1)
+    feats[prefix + 'word0_jaccard'] = jaccard(wa0, wb0)
+    feats[prefix + 'word1_jaccard'] = jaccard(wa1, wb1)
 
-    for n in ngrams:
-        feats[prefix+'word0_jaccard_{}gram'.format(n)] = jaccard_ngram(wa0, wb0, n)
-        feats[prefix+'word1_jaccard_{}gram'.format(n)] = jaccard_ngram(wa1, wb1, n)
+    for n in ngrams_word_jaccard:
+        feats[prefix + 'word0_jaccard_{}gram'.format(n)] = word_jaccard_ngram(wa0, wb0, n)
+        feats[prefix + 'word1_jaccard_{}gram'.format(n)] = word_jaccard_ngram(wa1, wb1, n)
+
+    for n in ngrams_char_jaccard:
+        feats[prefix + 'char_jaccard_{}gram'.format(n)] = char_jaccard_ngram(sa, sb, n)
+
+    feats[prefix + 'jw'] = jaro_winkler(sa, sb)
 
     return feats
 
+
 def gen_title_feature(a, b):
-    return gen_text_similarity_feature(a['title'], b['title'], 'title_')
+    return gen_text_similarity_feature(a['title'], b['title'],
+                                       prefix='title_', ngrams_char_jaccard=[3, 4, 5])
+
 
 def gen_description_feature(a, b):
     return gen_text_similarity_feature(a['description'], b['description'],
-                                       prefix='description_', ngrams=[2,3,4])
+                                       prefix='description_', ngrams_word_jaccard=[2, 3, 4],
+                                       ngrams_char_jaccard=[3, 4, 5])
