@@ -16,15 +16,28 @@ from util import ngrams
 def jaccard_ngram(a, b, n):
     return jaccard(ngrams(a, (n, n)), ngrams(b, (n, n)))
 
+def create_numeric_comparision(feats, a, b, name):
+    #min(nan, 1) = 1
+    feats[name+'_min'] = min(a, b)
+    feats[name+'_max'] = max(a, b)
+    feats[name+'_diff_ratio'] = abs(a-b)/(a+b)
 
 def gen_simple_feature(a, b):
     feats = {}
-    for name in ['title', 'description', 'categoryID', 'locationID', 'metroID']:
+    for name in ['title', 'description', 'price', 'categoryID', 'locationID', 'metroID']:
         feats['same_' + name] = a[name] == b[name]
     feats['same_lat_lon'] = (a['lat'] == b['lat']) and (a['lon'] == b['lon'])
+    feats['location_distance'] = ((a['lat']-b['lat'])**2+(a['lon']-b['lon'])**2)**(1/2)
 
-    price_diff = abs(a['price'] - b['price'])
-    feats['price_diff_ratio'] = price_diff / (a['price'] + b['price'])
+    create_numeric_comparision(feats, a['price'], b['price'], 'price')
+    try:
+        create_numeric_comparision(feats, len(a['title']), len(b['title']), 'title_length')
+    except TypeError:
+        pass
+    try:
+        create_numeric_comparision(feats, len(a['description']), len(b['description']), 'description_length')
+    except TypeError:
+        pass
 
     feats['attrsJSON_key_jaccard'] = jaccard(a['attrsJSON'].keys(), b['attrsJSON'].keys())
     feats['attrsJSON_item_jaccard'] = jaccard(a['attrsJSON'].items(), b['attrsJSON'].items())
