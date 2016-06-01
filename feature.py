@@ -95,7 +95,7 @@ def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[],
 
 def gen_title_feature(a, b):
     return gen_text_similarity_feature(a['title'], b['title'],
-                                       prefix='title_', use_char_ngram_jaccard=True, ngrams_char_jaccard=[3, 4, 5])
+                                       prefix='title_')
 
 def gen_description_feature(a, b):
     return gen_text_similarity_feature(a['description'], b['description'],
