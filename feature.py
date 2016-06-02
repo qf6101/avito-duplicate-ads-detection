@@ -49,6 +49,10 @@ def gen_simple_feature(a, b):
         create_numeric_comparision(feats, len(a['description']), len(b['description']), 'description_length')
     except TypeError:
         pass
+    try:
+        create_numeric_comparision(feats, len(a['images_array']), len(b['images_array']), 'images_count')
+    except TypeError:
+        pass
 
     feats['attrsJSON_key_jaccard'] = jaccard(a['attrsJSON'].keys(), b['attrsJSON'].keys())
     feats['attrsJSON_item_jaccard'] = jaccard(a['attrsJSON'].items(), b['attrsJSON'].items())
