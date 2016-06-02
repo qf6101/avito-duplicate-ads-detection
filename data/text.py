@@ -1,5 +1,5 @@
 from feature.text import preprocess_sentence, preprocess
-from .item import item_info
+from . import item_info, generate_with_cache
 import pandas as pd
 
 def gen_preprocessed_title(n_jobs=16, item_info=item_info):
