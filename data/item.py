@@ -17,12 +17,12 @@ from . import *
 from util import DataFrameNDArrayWrapper
 
 item_info = pd.concat((item_info_train, item_info_test))
-item_info.sort_index(inplace=True)
-item_info = DataFrameNDArrayWrapper(item_info)
+# item_info.sort_index(inplace=True)
+item_info_ = DataFrameNDArrayWrapper(item_info)
 
 
 def get_item(itemID):
-    return item_info.get_row_as_dict(itemID)
+    return item_info_.get_row_as_dict(itemID)
 
 
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'))

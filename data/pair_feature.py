@@ -1,10 +1,12 @@
 from . import *
 import pandas as pd
+from .aggregation_feature import *
 
 __all__ = ['gen_features',
            'simple_features_train', 'simple_features_test',
            'title_features_train', 'title_features_test',
-           'description_features_train', 'description_features_test']
+           'description_features_train', 'description_features_test',
+           'aggregation_features_train', 'aggregation_features_test']
 
 from feature import *
 
@@ -29,4 +31,9 @@ description_features_train = generate_with_cache('description_features_train',
                                            lambda: gen_features(gen_description_feature, item_pairs_train))
 description_features_test = generate_with_cache('description_features_test',
                                           lambda: gen_features(gen_description_feature, item_pairs_test))
+aggregation_features_train = generate_with_cache('aggregation_features_train',
+                                                 lambda: gen_features(gen_aggregation_feature, item_pairs_train))
+aggregation_features_test = generate_with_cache('aggregation_features_test',
+                                                lambda: gen_features(gen_aggregation_feature, item_pairs_test))
+
 
