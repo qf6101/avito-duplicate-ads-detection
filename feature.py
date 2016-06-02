@@ -30,7 +30,7 @@ def create_numeric_comparision(feats, a, b, name):
     # min(nan, 1) = 1
     feats[name + '_min'] = min(a, b)
     feats[name + '_max'] = max(a, b)
-    feats[name + '_diff_ratio'] = abs(a - b) / (a + b)
+    feats[name + '_diff_ratio'] = abs(a - b) / (a + b) if a + b > 0 else 0.0
 
 
 def gen_simple_feature(a, b):
@@ -70,6 +70,7 @@ tokenizer1_pattern = re.compile("\w+")
 def tokenize1(x):
     return tokenizer1_pattern.findall(x)
 
+
 def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[],
                                 use_char_ngram_jaccard=False, ngrams_char_jaccard=[3, 4, 5]):
     if not isinstance(sa, str) or not isinstance(sb, str):
@@ -93,13 +94,15 @@ def gen_text_similarity_feature(sa, sb, prefix='', ngrams_word_jaccard=[],
             feats[prefix + 'char_jaccard_{}gram'.format(n)] = char_jaccard_ngram(sa, sb, n)
 
     feats[prefix + 'jw'] = jaro_winkler(sa, sb)
-    feats[prefix + 'edit_distance_ratio'] = edit_distance(sa, sb)/(len(sa)+len(sb))
+    feats[prefix + 'edit_distance_ratio'] = edit_distance(sa, sb) / (len(sa) + len(sb))
 
     return feats
+
 
 def gen_title_feature(a, b):
     return gen_text_similarity_feature(a['title'], b['title'],
                                        prefix='title_')
+
 
 def gen_description_feature(a, b):
     return gen_text_similarity_feature(a['description'], b['description'],
