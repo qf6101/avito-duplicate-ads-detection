@@ -38,7 +38,7 @@ def preprocess_sentence(sent):
     return tokens, tokens_stemmed
 
 
-def preproces(txt):
+def preprocess(txt):
     if not isinstance(txt, str):
         return [], []
     sents = []
@@ -65,7 +65,7 @@ def gen_preprocessed_title(n_jobs=16, item_info=item_info):
 def gen_preprocessed_description(n_jobs=16, item_info=item_info):
     from multiprocessing import Pool
     pool = Pool(n_jobs)
-    description, description_stemmed = zip(*pool.map(preproces, item_info['description']))
+    description, description_stemmed = zip(*pool.map(preprocess, item_info['description']))
     df = pd.DataFrame({
         'description': description,
         'description_stemmed': description_stemmed,
