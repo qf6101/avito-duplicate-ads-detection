@@ -1,4 +1,4 @@
-from feature.text import preprocess_sentence, preprocess
+from feature.text_preprocess import preprocess_sentence, preprocess
 from . import item_info, generate_with_cache
 import pandas as pd
 
