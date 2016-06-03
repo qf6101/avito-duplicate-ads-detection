@@ -30,6 +30,7 @@ def create_numeric_comparision(feats, a, b, name):
     # min(nan, 1) = 1
     feats[name + '_min'] = min(a, b)
     feats[name + '_max'] = max(a, b)
+    feats[name + '_diff'] = abs(a - b)
     feats[name + '_diff_ratio'] = abs(a - b) / (a + b) if a + b > 0 else 0.0
 
 
