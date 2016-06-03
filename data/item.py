@@ -2,7 +2,7 @@ import jinja2
 from IPython.display import HTML
 import pandas as pd
 
-__all_ = ['get_item', 'show_item', 'show_item_pair']
+__all_ = ['get_item', 'show_item', 'show_item_pair', 'item_info']
 from . import *
 
 # object too big
