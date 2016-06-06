@@ -1,5 +1,6 @@
 from . import *
 from .aggregation_feature import *
+from .corpus_based import gen_title_idf_diff
 
 __all__ = ['gen_features',
            'simple_features_train', 'simple_features_test',

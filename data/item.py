@@ -2,7 +2,7 @@ import jinja2
 from IPython.display import HTML
 import pandas as pd
 
-__all_ = ['get_item', 'show_item', 'show_item_pair', 'item_info']
+__all_ = ['get_item', 'show_item', 'show_item_pair', 'item_info', 'item_id_to_index']
 from . import *
 
 # object too big
@@ -20,6 +20,7 @@ item_info = pd.concat((item_info_train, item_info_test))
 # item_info.sort_index(inplace=True)
 item_info_ = DataFrameNDArrayWrapper(item_info)
 
+item_id_to_index = dict(zip(item_info.index, range(item_info.shape[0])))
 
 def get_item(itemID):
     return item_info_.get_row_as_dict(itemID)
