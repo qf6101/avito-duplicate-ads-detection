@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import re
 
-from nltk.stem import SnowballStemmer
+from nltk.tokenize.treebank import TreebankWordTokenizer
+import Stemmer
 
-stemmer = SnowballStemmer(language='russian')
+stemmer = Stemmer.Stemmer('russian')
 
 class SentenceTokenzier:
     delimeter = re.compile('((?:(?<![0-9])\.|[!?\n])+)\W*')
@@ -19,11 +20,16 @@ class SentenceTokenzier:
 
 sentence_tokenzier = SentenceTokenzier()
 
-class WordTokenizer:
-    pattern = re.compile('\s*(\w+)\s*')
-    def tokenize(self, txt):
-        txt = txt.lstrip()
-        return list(filter(None, self.pattern.split(txt)))
+class WordTokenizer(TreebankWordTokenizer):
+    PUNCTUATION = [
+        (re.compile(r'([:,])([^\d])'), r' \1 \2'),
+        (re.compile(r'([:,])$'), r' \1 '),
+        (re.compile(r'\.\.\.'), r' ... '),
+        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
+        (re.compile(r'[?!]+'), r' \g<0> '),
+        (re.compile(r"([^'])' "), r"\1 ' "),
+    ]
 
 word_tokenizer = WordTokenizer()
 
@@ -31,9 +37,8 @@ def preprocess_sentence(sent):
     if not isinstance(sent, str):
         return [], []
     tokens = word_tokenizer.tokenize(sent)
-    tokens_stemmed = [stemmer.stem(x) for x in tokens]
+    tokens_stemmed = stemmer.stemWords(tokens)
     return tokens, tokens_stemmed
-
 
 def preprocess(txt):
     if not isinstance(txt, str):
