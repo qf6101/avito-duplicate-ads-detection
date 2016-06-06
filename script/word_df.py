@@ -14,7 +14,7 @@ def collect_tokens(x):
         res.extend(y)
     return res
 
-word_ngram_range = (1,4)
+word_ngram_range = (1,1)
 if __name__ == '__main__':
     df = {}
     for type, is_lower, source in product(['word_ngram', 'word_stemmed_ngram'], [False, True],['title', 'description', 'description_sentence']):
