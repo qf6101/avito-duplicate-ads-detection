@@ -55,7 +55,7 @@ def word_ngrams(tokens, ngram_range, stop_words=None, binary=False):
         for n in range(min_n,
                         min(max_n + 1, n_original_tokens + 1)):
             for i in range(n_original_tokens - n + 1):
-                token = " ".join(original_tokens[i: i + n])
+                token = tuple(original_tokens[i: i + n])
                 if binary:
                     tokens.add(token)
                 else:
