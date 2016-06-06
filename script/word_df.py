@@ -21,15 +21,12 @@ if __name__ == '__main__':
         df[(type, is_lower, source)] = Counter()
     df['sentence_number_in_descriptions'] = 0
 
-    import pdb
-    pdb.set_trace()
-
     def helper(tokens, tokens_lower, type, source):
         df[(type, False, source)].update(set(word_ngrams(tokens, word_ngram_range)))
         df[(type, True, source)].update(set(word_ngrams(tokens_lower, word_ngram_range)))
 
 
-    for line in islice(open('./data/data_files/ItemInfo_preprocessed.jsonl'),100):
+    for line in open('./data/data_files/ItemInfo_preprocessed.jsonl'):
         line = json.loads(line.rstrip())
 
         tokens, tokens_lower = set_and_lower_set(collect_tokens(line['title']))
