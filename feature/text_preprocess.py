@@ -2,6 +2,7 @@
 import re
 
 from nltk.stem import SnowballStemmer
+from nltk.tokenize.treebank import TreebankWordTokenizer
 
 stemmer = SnowballStemmer(language='russian')
 
@@ -19,11 +20,16 @@ class SentenceTokenzier:
 
 sentence_tokenzier = SentenceTokenzier()
 
-class WordTokenizer:
-    pattern = re.compile('\s*(\w+)\s*')
-    def tokenize(self, txt):
-        txt = txt.lstrip()
-        return list(filter(None, self.pattern.split(txt)))
+class WordTokenizer(TreebankWordTokenizer):
+    PUNCTUATION = [
+        (re.compile(r'([:,])([^\d])'), r' \1 \2'),
+        (re.compile(r'([:,])$'), r' \1 '),
+        (re.compile(r'\.\.\.'), r' ... '),
+        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
+        (re.compile(r'[?!]+'), r' \g<0> '),
+        (re.compile(r"([^'])' "), r"\1 ' "),
+    ]
 
 word_tokenizer = WordTokenizer()
 
