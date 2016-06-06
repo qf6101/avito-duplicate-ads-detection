@@ -10,16 +10,19 @@ logging.basicConfig(level=logging.DEBUG,
 
 __all__ = ['image_location', 'batch_image_location', 'gen_image_feature']
 
+# root of image locations
 images_dir = "/srv/data/0/ticktock/competition/kaggle/avito-duplicate-ads-detection/data/images"
 
 
 def image_location(image_id):
+    """Get image location from image ID"""
     first_index = str(int(int(image_id) % 100 / 10))
     second_index = str(int(image_id) % 100)
     return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
 
 
 def batch_image_location(image_ids):
+    """Get images location from image IDs"""
     img_locs = []
     for img_id in image_ids:
         img_locs.append(image_location(img_id))
@@ -27,6 +30,7 @@ def batch_image_location(image_ids):
 
 
 def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
+    """Compare image similarity from the minority side"""
     if len(left_img_locs) > len(right_img_locs):
         left_img_locs, right_img_locs = right_img_locs, left_img_locs
     batch_min_diff = sys.maxsize
@@ -55,14 +59,17 @@ def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
 
 
 def compare_images_with(left_img_locs, right_img_locs, comp_func):
+    """Compare image similarity with provided compare function"""
     return compare_images_from_minority(left_img_locs, right_img_locs, comp_func)
 
 
 def compare_images(left_img_locs, right_img_locs):
+    """Compare image similarity with histogram difference (USE OTHER SIMILARITY MEASURES HERE)"""
     return compare_images_with(left_img_locs, right_img_locs, hist_diff)
 
 
 def gen_image_feature(left_img_arrays, right_img_arrays):
+    """Generate image feature for two images arrays"""
     if len(left_img_arrays) <= 0 or len(right_img_arrays) <= 0:
         return np.nan, np.nan, np.nan
     else:
@@ -72,6 +79,7 @@ def gen_image_feature(left_img_arrays, right_img_arrays):
 
 
 def hist_diff(left_img, right_img):
+    """Calculate histogram difference of two images"""
     try:
         l_img_hist = cv2.calcHist(left_img, [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
         r_img_hist = cv2.calcHist(right_img, [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
@@ -83,6 +91,9 @@ def hist_diff(left_img, right_img):
 
 
 if __name__ == '__main__':
+    """ Generate image feature in parallel
+        Input is from stdin, output is to stdout
+    """
     import sys
     import json
     from collections import OrderedDict

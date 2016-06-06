@@ -3,6 +3,7 @@ import json
 
 
 def sort_image_feature(feature_file):
+    """Sort image feature file (json format) by index and save to csv file"""
     X = []
     with open(feature_file) as file:
         for line in file:
@@ -16,8 +17,9 @@ def sort_image_feature(feature_file):
 
 
 if __name__ == '__main__':
+    """Sort image feature file and save to csv file"""
     import argparse
-
+    # The image feature file name is in arguments
     arg_parser = argparse.ArgumentParser(description='sort image feature')
     arg_parser.add_argument('-f', help='json format image feature file', action='store', dest='jsonfile')
     args = arg_parser.parse_args()
