@@ -1,18 +1,111 @@
 import pickle
+from collections import Counter
 import numpy as np
 import scipy.sparse as sp
 import pandas as pd
 import os
-from . import data_file_dir,  generate_with_cache
-from .original import item_pairs_train, item_pairs_test
-from .item import item_id_to_index
 import nltk
 import re
 from itertools import chain, islice
+import json
+
+from . import data_file_dir,  generate_with_cache, get_data_file, get_cache_file
+# from .original import item_pairs_train, item_pairs_test
+# from .item import item_id_to_index
 
 __all__ = ['title_idf_diff']
 
 n_doc = 4659818
+
+from datatrek.make import PickleNode, RootNode
+
+preprocessed_text_file = get_data_file('ItemInfo_preprocessed.jsonl')
+preprocessed_text = RootNode([preprocessed_text_file])
+dfs_file = get_data_file('df.pickle')
+dfs = RootNode([dfs_file])
+
+def collect_tokens(x):
+    res = []
+    for y in x:
+        res.extend(y)
+    return res
+
+class DocumentTermMatrix(PickleNode):
+    def __init__(self, name, slot, lower=True):
+        super(DocumentTermMatrix, self).__init__(get_cache_file(name+'.pickle'),
+                                               [preprocessed_text, dfs])
+        self.name = name
+        self.slot = slot
+        self.lower = lower
+
+    def compute(self):
+        dfs = pickle.load(open('./data/data_files/df.pickle', 'rb'))
+        df = dfs[self.slot]
+
+        source = self.slot[2]
+        if 'stemmed' in self.slot[0]:
+            source += '_stemmed'
+
+        words = sorted(df.keys())
+        if self.lower:
+            words = sorted(set(map(str.lower, words)))
+        word_to_index = dict(zip(words, range(len(words))))
+
+
+        I = []
+        J = []
+        V = []
+        for i, line in enumerate(open(preprocessed_text_file)):
+            line = json.loads(line.rstrip())
+            tokens = collect_tokens(line[source])
+            if self.lower:
+                tokens = list(map(str.lower, tokens))
+            for w, c in Counter(tokens).items():
+                I.append(i)
+                J.append((word_to_index[w]))
+                V.append(c)
+
+        M = sp.csr_matrix((V, (I, J)))
+        self.dtm = M
+        self.words = words
+
+    def decorate_data(self):
+        return self.words, self.dtm
+
+class WordFilter:
+    stopwords = set(nltk.corpus.stopwords.words('russian'))
+    @classmethod
+    def contain_alphabet(cls, w, remove_stopwords=True):
+        if remove_stopwords:
+            if w in cls.stopwords:
+                return False
+            return re.match('^[0-9\W_]*$', w) is None
+
+
+class DocumentTermMatricFilter(PickleNode):
+    def __init__(self, name, src, word_filter):
+        super(DocumentTermMatricFilter, self).__init__(get_cache_file(name+'.pickle'),
+                                           [src])
+        self.word_filter = word_filter
+    def compute(self):
+        words, dtm = self.dependencies[0].get_data()
+
+        selected_words = []
+        selected = []
+        for i, w in enumerate(words):
+            if self.word_filter(w):
+                selected_words.append(w)
+                selected.append(i)
+        dtm = dtm[:, selected]
+        words = selected_words
+
+        self.dtm = dtm
+        self.words = words
+    def decorate_data(self):
+        return self.words, self.dtm
+
+title_word_dtm_0 = DocumentTermMatrix('title_word_dtm_0', slot=('word_stemmed_ngram', True, 'title'), lower=True)
+title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0, WordFilter.contain_alphabet)
 
 
 def gen_title_idf_diff():
@@ -60,4 +153,4 @@ def gen_title_idf_diff():
     feats = pd.DataFrame(feats, index=list(range(len(feats))))
     return feats
 
-title_idf_diff = generate_with_cache('title_idf_diff', gen_title_idf_diff)
+# title_idf_diff = generate_with_cache('title_idf_diff', gen_title_idf_diff)
