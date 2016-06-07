@@ -1,6 +1,8 @@
-from . import *
+from .item import get_item
+from .original import item_pairs_train, item_pairs_test
+from . import generate_with_cache
+import pandas as pd
 from .aggregation_feature import *
-from .corpus_based import gen_title_idf_diff
 
 __all__ = ['gen_features',
            'simple_features_train', 'simple_features_test',

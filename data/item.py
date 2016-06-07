@@ -1,6 +1,7 @@
 import jinja2
 from IPython.display import HTML
 import pandas as pd
+from .original import item_info_train, item_info_test
 
 __all_ = ['get_item', 'show_item', 'show_item_pair', 'item_info', 'item_id_to_index']
 from . import *
