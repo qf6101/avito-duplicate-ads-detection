@@ -13,7 +13,3 @@ def generate_with_cache(name, g):
 def load_file_with_cache(name, reader, f):
     return with_cache(os.path.join(cache_dir, name + '.pickle'),
                       lambda: reader(os.path.join(data_file_dir, f)))
-
-
-from .original import *
-from .item import *
