@@ -104,53 +104,71 @@ class DocumentTermMatricFilter(PickleNode):
     def decorate_data(self):
         return self.words, self.dtm
 
+class RepresentationModel(PickleNode):
+    def __init__(self, name, dtm_node, model, dtm_transformer=None):
+        super(RepresentationModel, self).__init__(get_cache_file(name + '.pickle'), [dtm_node])
+        self.name = name
+        self.model = model
+        self.dtm_transformer = dtm_transformer
+
+    def compute(self):
+        _, dtm = self.dependencies[0].get_data()
+        if self.dtm_transformer:
+            dtm = self.dtm_transformer.fit_transform(dtm)
+        self.embedding = self.model.fit_transform(dtm)
+
+    def decorate_data(self):
+        return self.embedding, self.model
+
+from sklearn.decomposition import TruncatedSVD, NMF
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.preprocessing import Binarizer
+from sklearn.pipeline import Pipeline
+
 title_word_dtm_0 = DocumentTermMatrix('title_word_dtm_0', slot=('word_stemmed_ngram', True, 'title'), lower=True)
 title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0, WordFilter.contain_alphabet)
+description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'), lower=True)
+description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0, WordFilter.contain_alphabet)
+title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=0),
+                                         dtm_transformer=Binarizer(copy=False)
+                                         )
+title_word_lsa_1_1 = RepresentationModel('title_word_lsa_1_1', title_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=1),
+                                         dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                                   ('tfidf_transformer', TfidfTransformer())])
+                                         )
+description_word_lsa_1_0 = RepresentationModel('description_word_lsa_1_0', description_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=2),
+                                         dtm_transformer=Binarizer(copy=False)
+                                         )
+description_word_lsa_1_1 = RepresentationModel('description_word_lsa_1_1', description_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=3),
+                                         dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                                   ('tfidf_transformer', TfidfTransformer())])
+                                         )
+title_word_nmf_1_0 = RepresentationModel('title_word_nmf_1_0', title_word_dtm_1,
+                                         model = NMF(n_components=500, random_state=4),
+                                         dtm_transformer=Binarizer(copy=False)
+                                         )
+title_word_nmf_1_1 = RepresentationModel('title_word_nmf_1_1', title_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, random_state=5),
+                                         dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                                   ('tfidf_transformer', TfidfTransformer())])
+                                         )
+description_word_nmf_1_0 = RepresentationModel('description_word_nmf_1_0', description_word_dtm_1,
+                                         model = NMF(n_components=500, random_state=4),
+                                         dtm_transformer=Binarizer(copy=False)
+                                         )
+description_word_nmf_1_1 = RepresentationModel('description_word_nmf_1_1', description_word_dtm_1,
+                                         model = TruncatedSVD(n_components=500, random_state=5),
+                                         dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                                   ('tfidf_transformer', TfidfTransformer())])
+                                         )
 
 
-def gen_title_idf_diff():
-    dfs = pickle.load(open((os.path.join(data_file_dir, 'df.pickle')), 'rb'))
-    df = dfs[('word_ngram', False, 'title')]
 
-    tmp = pd.read_pickle(os.path.join(data_file_dir, 'word_title_dtm.pickle'))
-    dtm = tmp['dtm']
-    words = tmp['words']
-
-    stopwords = set(nltk.corpus.stopwords.words('russian'))
-
-    selected_words = []
-    selected = []
-
-    for i, w in enumerate(words):
-        if w not in stopwords and re.match('^[0-9\W_]*$', w) is None:
-            selected_words.append(w)
-            selected.append(i)
-    dtm = dtm[:, selected]
-    df = np.array([df[w] for w in selected_words])
-    idf = np.log(n_doc) - np.log(df)
-
-    dtm.data.fill(1)
-    dtm = dtm * sp.diags(idf) #weight column by idf
-
-    feats = {}
-    for id1, id2 in chain(zip(item_pairs_train.itemID_1, item_pairs_train.itemID_2),
-                          zip(item_pairs_test.itemID_1, item_pairs_test.itemID_2)):
-        i1 = item_id_to_index[id1]
-        i2 = item_id_to_index[id2]
-
-        v1 = dtm[i1]
-        v2 = dtm[i2]
-
-        feats['title_cosine']  = v1.dot(v2)/(v1.dot(v1)*v2.dot(v2))**(1/2)
-
-        diff = v1 - v2
-        diff1 = diff.maximum(0).max()
-        diff2 = -diff.minimum(0).min()
-
-        feats['title_idf_diff_min'] = min(diff1, diff2)
-        feats['title_idf_diff_max'] = max(diff1, diff2)
-
-    feats = pd.DataFrame(feats, index=list(range(len(feats))))
-    return feats
-
-# title_idf_diff = generate_with_cache('title_idf_diff', gen_title_idf_diff)
+models = [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0, description_word_dtm_1,
+          title_word_lsa_1_0, title_word_lsa_1_1, description_word_lsa_1_0, description_word_lsa_1_1,
+          title_word_nmf_1_0, title_word_nmf_1_1, description_word_nmf_1_0, description_word_nmf_1_1,
+          ]
