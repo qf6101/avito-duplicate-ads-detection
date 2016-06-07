@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# This script is to generate image feature
 # Prerequisite: ../data/data_files/image_itemPairs_train.csv and ../data/data_files/image_itemPairs_test.csv
 # To generate them, execute: cd ../data && python image_item_pair.py
 
