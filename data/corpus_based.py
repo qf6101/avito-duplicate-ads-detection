@@ -130,38 +130,38 @@ title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'), lower=True)
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0, WordFilter.contain_alphabet)
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=0),
+                                         model = TruncatedSVD(n_components=100, n_iter=20, random_state=0),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
 title_word_lsa_1_1 = RepresentationModel('title_word_lsa_1_1', title_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=1),
+                                         model = TruncatedSVD(n_components=100, n_iter=20, random_state=1),
                                          dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                    ('tfidf_transformer', TfidfTransformer())])
                                          )
 description_word_lsa_1_0 = RepresentationModel('description_word_lsa_1_0', description_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=2),
+                                         model = TruncatedSVD(n_components=100, n_iter=20, random_state=2),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
 description_word_lsa_1_1 = RepresentationModel('description_word_lsa_1_1', description_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, n_iter=100, random_state=3),
+                                         model = TruncatedSVD(n_components=100, n_iter=20, random_state=3),
                                          dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                    ('tfidf_transformer', TfidfTransformer())])
                                          )
 title_word_nmf_1_0 = RepresentationModel('title_word_nmf_1_0', title_word_dtm_1,
-                                         model = NMF(n_components=500, random_state=4),
+                                         model = NMF(n_components=100, random_state=4),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
 title_word_nmf_1_1 = RepresentationModel('title_word_nmf_1_1', title_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, random_state=5),
+                                         model = TruncatedSVD(n_components=100, random_state=5),
                                          dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                    ('tfidf_transformer', TfidfTransformer())])
                                          )
 description_word_nmf_1_0 = RepresentationModel('description_word_nmf_1_0', description_word_dtm_1,
-                                         model = NMF(n_components=500, random_state=4),
+                                         model = NMF(n_components=100, random_state=4),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
 description_word_nmf_1_1 = RepresentationModel('description_word_nmf_1_1', description_word_dtm_1,
-                                         model = TruncatedSVD(n_components=500, random_state=5),
+                                         model = TruncatedSVD(n_components=100, random_state=5),
                                          dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                    ('tfidf_transformer', TfidfTransformer())])
                                          )
