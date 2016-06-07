@@ -45,7 +45,7 @@ class PairRelation(PickleNode):
             I.append(item_id_to_index[a])
             J.append(item_id_to_index[b])
 
-        self.pairs = list(zip(I, J))
+        self.pairs = (I, J)
 
     def decorate_data(self):
         return self.pairs
@@ -121,6 +121,7 @@ class DocumentTermMatricFilter(PickleNode):
     def __init__(self, name, src, word_filter):
         super(DocumentTermMatricFilter, self).__init__(get_cache_file(name + '.pickle'),
                                                        [src])
+        self.name = name
         self.word_filter = word_filter
 
     def compute(self):
@@ -177,22 +178,22 @@ class CosineSimilarityFeature(PickleNode):
         super(CosineSimilarityFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
 
     def compute(self):
-        pairs = pair_relation.get_data()
-        feats = np.empty((len(pairs), 4*len(self.vec_models)))
-        columns = []
-        for j, m in enumerate(self.vec_models):
-            columns.extend(m.name+'__'+version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf'])
+        I, J = pair_relation.get_data()
+        feats = {}
+        for m in self.vec_models:
+            feat_names = [m.name+'__'+version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
             V0 = m.get_data(matrix_only=True)
             V1 = binarizer.fit_transform(V0)
             V2 = tfidf_transformer.fit_transform(V0)
             V3 = tfidf_transformer.fit_transform(V1)
-            for k,V in enumerate([V0, V1, V2, V3]):
-                l2_normalizer_inplace.fit(V)
-                for i, (a, b) in enumerate(pairs):
-                    va = V[a]
-                    vb = V[b]
-                    feats[i,j*4+k] = va.dot(vb.T)[0,0]
-        self.feats = pd.DataFrame(feats, columns=[name+'__cosine_similarity' for name in columns])
+            for k,V in zip(feat_names, [V0, V1, V2, V3]):
+                V = l2_normalizer_inplace.fit_transform(V)
+                if sp.issparse(V):
+                    feats[k] = np.array((V[I].multiply(V[J])).sum(axis=1)).ravel()
+                else:
+                    feats[k] = (V[I] * V[J]).sum(axis=1)
+
+        self.feats = pd.DataFrame(feats)
 
     def decorate_data(self):
         return self.feats
