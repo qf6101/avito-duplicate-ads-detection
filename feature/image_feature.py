@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import logging
+import sys
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -8,21 +9,25 @@ logging.basicConfig(level=logging.DEBUG,
                     filename='image_feature.log',
                     filemode='a')
 
-__all__ = ['image_location', 'batch_image_location', 'gen_image_feature']
+__all__ = ['image_location', 'batch_image_location', 'gen_image_feature', 'compare_images']
 
 # root of image locations
 images_dir = "/srv/data/0/ticktock/competition/kaggle/avito-duplicate-ads-detection/data/images"
 
 
 def image_location(image_id):
-    """Get image location from image ID"""
+    """
+    Get image location from image ID
+    """
     first_index = str(int(int(image_id) % 100 / 10))
     second_index = str(int(image_id) % 100)
     return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
 
 
 def batch_image_location(image_ids):
-    """Get images location from image IDs"""
+    """
+    Get images location from image IDs
+    """
     img_locs = []
     for img_id in image_ids:
         img_locs.append(image_location(img_id))
@@ -30,7 +35,9 @@ def batch_image_location(image_ids):
 
 
 def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
-    """Compare image similarity from the minority side"""
+    """
+    Compare image similarity from the minority side
+    """
     if len(left_img_locs) > len(right_img_locs):
         left_img_locs, right_img_locs = right_img_locs, left_img_locs
     batch_min_diff = sys.maxsize
@@ -59,35 +66,69 @@ def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
 
 
 def compare_images_with(left_img_locs, right_img_locs, comp_func):
-    """Compare image similarity with provided compare function"""
+    """
+    Compare image similarity with provided compare function
+    """
     return compare_images_from_minority(left_img_locs, right_img_locs, comp_func)
 
 
 def compare_images(left_img_locs, right_img_locs):
-    """Compare image similarity with histogram difference (USE OTHER SIMILARITY MEASURES HERE)"""
-    return compare_images_with(left_img_locs, right_img_locs, hist_diff)
+    """
+    Compare image similarity with histogram difference (USE OTHER SIMILARITY MEASURES HERE)
+    """
+    hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
+    hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
+    hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
+    return hist_diff_8bins + hist_diff_32bins + hist_diff_64bins
 
 
 def gen_image_feature(left_img_arrays, right_img_arrays):
-    """Generate image feature for two images arrays"""
+    """
+    Generate image feature for two images arrays
+    """
     if len(left_img_arrays) <= 0 or len(right_img_arrays) <= 0:
-        return np.nan, np.nan, np.nan
+        return [np.nan] * 9
     else:
         left_img_locs = batch_image_location(left_img_arrays.split(","))
         right_img_locs = batch_image_location(right_img_arrays.split(","))
         return compare_images(left_img_locs, right_img_locs)
 
 
-def hist_diff(left_img, right_img):
-    """Calculate histogram difference of two images"""
+def calc_hist_diff(left_img, right_img, num_bin):
+    """
+    Calculate histogram difference of two images with given number of bins
+    """
     try:
-        l_img_hist = cv2.calcHist(left_img, [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
-        r_img_hist = cv2.calcHist(right_img, [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        l_img_hist = cv2.calcHist(left_img, [0, 1, 2], None, [num_bin, num_bin, num_bin],
+                                  [0, 256, 0, 256, 0, 256])
+        r_img_hist = cv2.calcHist(right_img, [0, 1, 2], None, [num_bin, num_bin, num_bin],
+                                  [0, 256, 0, 256, 0, 256])
         l_img_hist = cv2.normalize(l_img_hist, l_img_hist).flatten()
         r_img_hist = cv2.normalize(r_img_hist, r_img_hist).flatten()
         return cv2.compareHist(l_img_hist, r_img_hist, cv2.HISTCMP_CORREL)
     except:
         return np.nan
+
+
+def calc_hist_diff_8bins(left_img, right_img):
+    """
+    Calculate histogram difference of two images with 8 bins
+    """
+    return calc_hist_diff(left_img, right_img, 8)
+
+
+def calc_hist_diff_32bins(left_img, right_img):
+    """
+    Calculate histogram difference of two images with 32 bins
+    """
+    return calc_hist_diff(left_img, right_img, 32)
+
+
+def calc_hist_diff_64bins(left_img, right_img):
+    """
+    Calculate histogram difference of two images with 64 bins
+    """
+    return calc_hist_diff(left_img, right_img, 64)
 
 
 if __name__ == '__main__':
@@ -102,14 +143,19 @@ if __name__ == '__main__':
 
     for line in sys.stdin:
         line = json.loads(line.rstrip())
-        index = int(line['index'])
         left_item = line['images_array_1']
         right_item = line['images_array_2']
-        min_hist_diff, max_hist_diff, avg_hist_diff = gen_image_feature(left_item, right_item)
+        min_hist_diff_8bins, max_hist_diff_8bins, avg_hist_diff_8bins, min_hist_diff_32bins, max_hist_diff_32bins, avg_hist_diff_32bins, min_hist_diff_64bins, max_hist_diff_64bins, avg_hist_diff_64bins, = gen_image_feature(
+            left_item, right_item)
         res = OrderedDict([
-            ('index', index),
-            ('min_hist_diff', min_hist_diff),
-            ('max_hist_diff', max_hist_diff),
-            ('avg_hist_diff', avg_hist_diff),
+            ('min_hist_diff_8bins', min_hist_diff_8bins),
+            ('max_hist_diff_8bins', max_hist_diff_8bins),
+            ('avg_hist_diff_8bins', avg_hist_diff_8bins),
+            ('min_hist_diff_32bins', min_hist_diff_32bins),
+            ('max_hist_diff_32bins', max_hist_diff_32bins),
+            ('avg_hist_diff_32bins', avg_hist_diff_32bins),
+            ('min_hist_diff_64bins', min_hist_diff_64bins),
+            ('max_hist_diff_64bins', max_hist_diff_64bins),
+            ('avg_hist_diff_64bins', avg_hist_diff_64bins),
         ])
         print(jsonify(res))

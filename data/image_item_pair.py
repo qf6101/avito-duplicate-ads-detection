@@ -21,6 +21,8 @@ def join_image_item_pair(item_pair_file, item_info_file):
         columns={'images_array_x': 'images_array_1', 'images_array_y': 'images_array_2'})
     item12_merged[['index', 'itemID_1', 'itemID_2']].astype(int)
     item12_merged[['images_array_1', 'images_array_2']].astype(str)
+    item12_merged = item12_merged.sort_values(['index'])
+    item12_merged = item12_merged.set_index('index')
     return item12_merged
 
 

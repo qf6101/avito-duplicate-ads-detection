@@ -7,8 +7,8 @@
 # Generate image feature in parallel
 function work(){
 pv --rate -i 5 \
- | csvcut -c 'index,images_array_1,images_array_2' | csvjson --stream \
-  | parallel --gnu -k --pipe -N 10  --jobs 16 python ../feature/image_feature.py| in2csv -f ndjson
+ | csvcut -c 'images_array_1,images_array_2' | csvjson --stream \
+  | parallel --gnu -k --pipe -N 20  --jobs 16 python ../feature/image_feature.py| in2csv -f ndjson
 
 }
 
