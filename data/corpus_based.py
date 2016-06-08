@@ -173,12 +173,13 @@ binarizer = Binarizer()
 tfidf_transformer = TfidfTransformer()
 
 from multiprocessing import Pool
+from itertools import repeat
 class CosineSimilarityFeature(PickleNode):
     def __init__(self, name, vec_models):
         self.vec_models = vec_models
         super(CosineSimilarityFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
 
-    def compute_for_model(self, m):
+    def compute_for_model(self, m, I, J):
         feats = OrderedDict()
         feat_names = [m.name+'__'+version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
         V0 = m.get_data(matrix_only=True)
@@ -196,8 +197,8 @@ class CosineSimilarityFeature(PickleNode):
     def compute(self):
         I, J = pair_relation.get_data()
         feats = OrderedDict()
-        pool = Pool(min(len(self.vec_models), 16))
-        for res in pool.map(self.compute_for_model, self.vec_models):
+        pool = Pool(min(len(self.vec_models), 5))
+        for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
             feats.update(res)
         self.feats = pd.DataFrame(feats)
 
