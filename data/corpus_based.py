@@ -1,15 +1,15 @@
-import pickle
-from collections import Counter, OrderedDict
-import numpy as np
-import scipy.sparse as sp
-import pandas as pd
-import os
-import nltk
-import re
-from itertools import chain, islice
 import json
+import pickle
+import re
+from collections import Counter, OrderedDict
+from itertools import chain
 
-from . import data_file_dir, generate_with_cache, get_data_file, get_cache_file
+import nltk
+import numpy as np
+import pandas as pd
+import scipy.sparse as sp
+
+from . import get_data_file, get_cache_file
 
 # from .original import item_pairs_train, item_pairs_test
 # from .item import item_id_to_index
@@ -62,23 +62,23 @@ def collect_tokens(x):
 
 
 class DocumentTermMatrix(PickleNode):
-    def __init__(self, name, slot, lower=True):
+    def __init__(self, name, slot):
         super(DocumentTermMatrix, self).__init__(get_cache_file(name + '.pickle'),
                                                  [preprocessed_text, dfs])
         self.name = name
         self.slot = slot
-        self.lower = lower
 
     def compute(self):
         dfs = pickle.load(open('./data/data_files/df.pickle', 'rb'))
         df = dfs[self.slot]
 
+        lower = self.slot[1]
         source = self.slot[2]
         if 'stemmed' in self.slot[0]:
             source += '_stemmed'
 
         words = sorted(df.keys())
-        if self.lower:
+        if lower:
             words = sorted(set(map(str.lower, words)))
         word_to_index = dict(zip(words, range(len(words))))
 
@@ -88,7 +88,7 @@ class DocumentTermMatrix(PickleNode):
         for i, line in enumerate(open(preprocessed_text_file)):
             line = json.loads(line.rstrip())
             tokens = collect_tokens(line[source])
-            if self.lower:
+            if lower:
                 tokens = list(map(str.lower, tokens))
             for w, c in Counter(tokens).items():
                 I.append(i)
@@ -115,6 +115,10 @@ class WordFilter:
             if w in cls.stopwords:
                 return False
             return re.match('^[0-9\W_]*$', w) is None
+
+    @classmethod
+    def remove_stop_words(cls, w):
+        return w not in cls.stopwords
 
 
 class DocumentTermMatricFilter(PickleNode):
@@ -165,28 +169,50 @@ class RepresentationModel(PickleNode):
         else:
             return self.embedding, self.model
 
+
 from sklearn.preprocessing import Normalizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import Binarizer
+
 l2_normalizer_inplace = Normalizer(norm='l2', copy=False)
 binarizer = Binarizer()
 tfidf_transformer = TfidfTransformer()
 
 from multiprocessing import Pool
 from itertools import repeat
-class CosineSimilarityFeature(PickleNode):
+
+
+class VectorSimilarityFeatureBase(PickleNode):
+    def compute(self):
+        I, J = pair_relation.get_data()
+        feats = OrderedDict()
+
+        ## debug
+        #for m in self.vec_models:
+        #    feats.update(self.compute_for_model(m, I, J))
+        pool = Pool(min(len(self.vec_models), 5))
+        for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
+           feats.update(res)
+
+        self.feats = pd.DataFrame(feats)
+
+    def decorate_data(self):
+        return self.feats
+
+
+class CosineSimilarityFeature(VectorSimilarityFeatureBase):
     def __init__(self, name, vec_models):
         self.vec_models = vec_models
         super(CosineSimilarityFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
 
     def compute_for_model(self, m, I, J):
         feats = OrderedDict()
-        feat_names = [m.name+'__'+version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
+        feat_names = [m.name + '__' + version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
         V0 = m.get_data(matrix_only=True)
         V1 = binarizer.fit_transform(V0)
         V2 = tfidf_transformer.fit_transform(V0)
         V3 = tfidf_transformer.fit_transform(V1)
-        for k,V in zip(feat_names, [V0, V1, V2, V3]):
+        for k, V in zip(feat_names, [V0, V1, V2, V3]):
             V = l2_normalizer_inplace.fit_transform(V)
             if sp.issparse(V):
                 feats[k] = np.array((V[I].multiply(V[J])).sum(axis=1)).ravel()
@@ -194,28 +220,54 @@ class CosineSimilarityFeature(PickleNode):
                 feats[k] = (V[I] * V[J]).sum(axis=1)
         return feats
 
-    def compute(self):
-        I, J = pair_relation.get_data()
-        feats = OrderedDict()
-        pool = Pool(min(len(self.vec_models), 5))
-        for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
-            feats.update(res)
-        self.feats = pd.DataFrame(feats)
 
-    def decorate_data(self):
-        return self.feats
+tfidf_transformer_nonorm = TfidfTransformer(norm=None)
+
+
+class DiffTermIdfFeature(VectorSimilarityFeatureBase):
+    def __init__(self, name, vec_models):
+        self.vec_models = vec_models
+        super(DiffTermIdfFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
+
+    def compute_for_model(self, m, I, J):
+        feats = OrderedDict()
+        V = m.get_data(matrix_only=True)
+        assert sp.issparse(V)
+        V = binarizer.fit_transform(V)
+        V = tfidf_transformer_nonorm.fit_transform(V)
+        D = V[I] - V[J]
+        d1 = np.array(D.maximum(0).max(axis=1).todense())
+        d2 = np.array(-D.minimum(0).min(axis=1).todense())
+        d = np.concatenate((d1, d2), axis=1)
+        d.sort(axis=1)
+
+        feats[m.name + '__' + 'max_disjoint_idf_min'] = d[:, 0]
+        feats[m.name + '__' + 'max_disjoint_idf_max'] = d[:, 1]
+
+        return feats
+
+
 
 
 from sklearn.decomposition import TruncatedSVD, NMF
 
 from sklearn.pipeline import Pipeline
 
-title_word_dtm_0 = DocumentTermMatrix('title_word_dtm_0', slot=('word_stemmed_ngram', True, 'title'), lower=True)
+title_word_dtm_0 = DocumentTermMatrix('title_word_dtm_0', slot=('word_stemmed_ngram', True, 'title'))
 title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0, WordFilter.contain_alphabet)
-description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'),
-                                            lower=True)
+title_word_dtm_2 = DocumentTermMatrix('title_word_dtm_2', slot=('word_ngram', True, 'title'))
+title_word_dtm_3 = DocumentTermMatricFilter('title_word_dtm_3', title_word_dtm_2, WordFilter.remove_stop_words)
+title_word_dtm_4 = DocumentTermMatricFilter('title_word_dtm_4', title_word_dtm_0, WordFilter.remove_stop_words)
+
+description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
                                                   WordFilter.contain_alphabet)
+description_word_dtm_2 = DocumentTermMatrix('description_word_dtm_2', slot=('word_ngram', True, 'description'))
+description_word_dtm_3 = DocumentTermMatricFilter('description_word_dtm_3', description_word_dtm_2,
+                                                  WordFilter.remove_stop_words)
+description_word_dtm_4 = DocumentTermMatricFilter('description_word_dtm_4', description_word_dtm_0,
+                                                  WordFilter.remove_stop_words)
+
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
                                          dtm_transformer=Binarizer(copy=False)
@@ -266,5 +318,22 @@ models = [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0, descriptio
           # title_word_nmf_1_0, title_word_nmf_1_1, description_word_nmf_1_0, description_word_nmf_1_1,
           ]
 cosine_similarity_features = CosineSimilarityFeature('cosine_similarity_features',
-                                                     models)
-feats = [cosine_similarity_features]
+                                                     [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0,
+                                                      description_word_dtm_1,
+                                                      title_word_lsa_1_0, title_word_lsa_1_1,
+                                                      description_word_lsa_1_0, description_word_lsa_1_1,
+                                                      description_word_lsa_1_2, description_word_lsa_1_3
+                                                      ])
+
+cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_features_2', [
+    title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
+    description_word_dtm_2, description_word_dtm_3, description_word_dtm_4
+])
+
+diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
+                                            [title_word_dtm_0, title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
+                                             description_word_dtm_0, description_word_dtm_2, description_word_dtm_3,
+                                             description_word_dtm_4]
+                                            )
+
+feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, diff_term_idf_features]
