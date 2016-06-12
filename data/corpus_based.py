@@ -105,6 +105,34 @@ class DocumentTermMatrix(PickleNode):
         else:
             return self.words, self.dtm
 
+from sklearn.feature_extraction.text import CountVectorizer
+class DocumentTermMatrixFromWordCounter(PickleNode):
+    def __init__(self, name, source, lower, counter_params):
+        super(DocumentTermMatrixFromWordCounter, self).__init__(get_cache_file(name + '.pickle'),
+                                                 [preprocessed_text])
+        self.name = name
+        self.source = source
+        self.lower = lower
+        self.counter_params = counter_params
+
+    def _tokenizer(self, line):
+        line = json.loads(line.rstrip())
+        tokens = collect_tokens(line[self.source])
+        if self.lower:
+            tokens = list(map(str.lower, tokens))
+        return tokens
+
+
+    def compute(self):
+        counter = CountVectorizer(tokenizer=self._tokenizer, **self.counter_params)
+        self.dtm = counter.fit_transform(open(preprocessed_text_file))
+        self.words = sorted(counter.vocabulary_)
+
+    def decorate_data(self, matrix_only=False):
+        if matrix_only:
+            return self.dtm
+        else:
+            return self.words, self.dtm
 
 class WordFilter:
     stopwords = set(nltk.corpus.stopwords.words('russian'))
@@ -258,6 +286,9 @@ title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0
 title_word_dtm_2 = DocumentTermMatrix('title_word_dtm_2', slot=('word_ngram', True, 'title'))
 title_word_dtm_3 = DocumentTermMatricFilter('title_word_dtm_3', title_word_dtm_2, WordFilter.remove_stop_words)
 title_word_dtm_4 = DocumentTermMatricFilter('title_word_dtm_4', title_word_dtm_0, WordFilter.remove_stop_words)
+
+title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm_0', source='title_stemmed', lower=True,
+                                                           counter_params={'ngram_range': (2,2)})
 
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
