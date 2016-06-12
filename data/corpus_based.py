@@ -138,6 +138,10 @@ class WordFilter:
     stopwords = set(nltk.corpus.stopwords.words('russian'))
 
     @classmethod
+    def none(cls, w):
+        return True
+
+    @classmethod
     def contain_alphabet(cls, w, remove_stopwords=True):
         if remove_stopwords:
             if w in cls.stopwords:
@@ -148,13 +152,14 @@ class WordFilter:
     def remove_stop_words(cls, w):
         return w not in cls.stopwords
 
-
+import numbers
 class DocumentTermMatricFilter(PickleNode):
-    def __init__(self, name, src, word_filter):
+    def __init__(self, name, src, word_filter, min_df=1):
         super(DocumentTermMatricFilter, self).__init__(get_cache_file(name + '.pickle'),
                                                        [src])
         self.name = name
         self.word_filter = word_filter
+        self.min_df = min_df
 
     def compute(self):
         words, dtm = self.dependencies[0].get_data()
@@ -167,6 +172,17 @@ class DocumentTermMatricFilter(PickleNode):
                 selected.append(i)
         dtm = dtm[:, selected]
         words = selected_words
+
+        n_doc = dtm.shape[0]
+        min_doc_count = (self.min_df
+                         if isinstance(self.min_df, numbers.Integral)
+                         else self.min_df * n_doc)
+        if min_doc_count > 1:
+            dtm_ = binarizer.fit_transform(dtm)
+            dfs = np.asarray(dtm_.sum(axis=0)).ravel()
+            selected = np.where(dfs>=min_doc_count)[0]
+            dtm = dtm[:, selected]
+            words = list(np.array(words)[selected])
 
         self.dtm = dtm
         self.words = words
@@ -289,6 +305,7 @@ title_word_dtm_4 = DocumentTermMatricFilter('title_word_dtm_4', title_word_dtm_0
 
 title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm_0', source='title_stemmed', lower=True,
                                                            counter_params={'ngram_range': (2,2)})
+title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none, min_df=3)
 
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
