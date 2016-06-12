@@ -18,7 +18,7 @@ __all__ = ['title_idf_diff']
 
 n_doc = 4659818
 
-from datatrek.make import PickleNode, RootNode
+from datatrek.make import PickleNode, RootNode, VirtualNode
 
 preprocessed_text_file = get_data_file('ItemInfo_preprocessed.jsonl')
 preprocessed_text = RootNode([preprocessed_text_file])
@@ -105,11 +105,14 @@ class DocumentTermMatrix(PickleNode):
         else:
             return self.words, self.dtm
 
+
 from sklearn.feature_extraction.text import CountVectorizer
+
+
 class DocumentTermMatrixFromWordCounter(PickleNode):
     def __init__(self, name, source, lower, counter_params):
         super(DocumentTermMatrixFromWordCounter, self).__init__(get_cache_file(name + '.pickle'),
-                                                 [preprocessed_text])
+                                                                [preprocessed_text])
         self.name = name
         self.source = source
         self.lower = lower
@@ -122,7 +125,6 @@ class DocumentTermMatrixFromWordCounter(PickleNode):
             tokens = list(map(str.lower, tokens))
         return tokens
 
-
     def compute(self):
         counter = CountVectorizer(tokenizer=self._tokenizer, **self.counter_params)
         self.dtm = counter.fit_transform(open(preprocessed_text_file))
@@ -133,6 +135,22 @@ class DocumentTermMatrixFromWordCounter(PickleNode):
             return self.dtm
         else:
             return self.words, self.dtm
+
+
+class DocumentTermMatrixUnion(VirtualNode):
+    def get_data(self, matrix_only=False):
+        words = []
+        dtms = []
+        for src in self.dependencies:
+            w, d = src.get_data()
+            words.extend(w)
+            dtms.append(d)
+        dtm = sp.hstack(dtms)
+        if matrix_only:
+            return dtm
+        else:
+            return words, dtm
+
 
 class WordFilter:
     stopwords = set(nltk.corpus.stopwords.words('russian'))
@@ -152,7 +170,10 @@ class WordFilter:
     def remove_stop_words(cls, w):
         return w not in cls.stopwords
 
+
 import numbers
+
+
 class DocumentTermMatricFilter(PickleNode):
     def __init__(self, name, src, word_filter, min_df=1):
         super(DocumentTermMatricFilter, self).__init__(get_cache_file(name + '.pickle'),
@@ -180,7 +201,7 @@ class DocumentTermMatricFilter(PickleNode):
         if min_doc_count > 1:
             dtm_ = binarizer.fit_transform(dtm)
             dfs = np.asarray(dtm_.sum(axis=0)).ravel()
-            selected = np.where(dfs>=min_doc_count)[0]
+            selected = np.where(dfs >= min_doc_count)[0]
             dtm = dtm[:, selected]
             words = list(np.array(words)[selected])
 
@@ -232,11 +253,11 @@ class VectorSimilarityFeatureBase(PickleNode):
         feats = OrderedDict()
 
         ## debug
-        #for m in self.vec_models:
+        # for m in self.vec_models:
         #    feats.update(self.compute_for_model(m, I, J))
         pool = Pool(min(len(self.vec_models), 5))
         for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
-           feats.update(res)
+            feats.update(res)
 
         self.feats = pd.DataFrame(feats)
 
@@ -291,8 +312,6 @@ class DiffTermIdfFeature(VectorSimilarityFeatureBase):
         return feats
 
 
-
-
 from sklearn.decomposition import TruncatedSVD, NMF
 
 from sklearn.pipeline import Pipeline
@@ -304,8 +323,11 @@ title_word_dtm_3 = DocumentTermMatricFilter('title_word_dtm_3', title_word_dtm_2
 title_word_dtm_4 = DocumentTermMatricFilter('title_word_dtm_4', title_word_dtm_0, WordFilter.remove_stop_words)
 
 title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm_0', source='title_stemmed', lower=True,
-                                                           counter_params={'ngram_range': (2,2)})
-title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none, min_df=3)
+                                                           counter_params={'ngram_range': (2, 2)})
+title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none,
+                                                  min_df=3)
+
+title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion([title_word_dtm_4, title_word_2gram_dtm_1])
 
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
@@ -375,10 +397,12 @@ cosine_similarity_features = CosineSimilarityFeature('cosine_similarity_features
 
 cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_features_2', [
     title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
-    description_word_dtm_2, description_word_dtm_3, description_word_dtm_4
+    description_word_dtm_2, description_word_dtm_3, description_word_dtm_4,
 ])
 
-cosine_similarity_features_3 = CosineSimilarityFeature('cosine_similarity_features_3', [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
+cosine_similarity_features_3 = CosineSimilarityFeature('cosine_similarity_features_3',
+                                                       [title_word_2gram_dtm_0, title_word_2gram_dtm_1,
+                                                        title_word_1_2gram_dtm_0])
 
 diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
@@ -386,7 +410,8 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                              description_word_dtm_4]
                                             )
 
-diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2', [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
+diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
+                                              [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, cosine_similarity_features_3,
                  diff_term_idf_features, diff_term_idf_features_2]
