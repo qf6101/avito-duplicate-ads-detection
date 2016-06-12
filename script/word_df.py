@@ -14,16 +14,19 @@ def collect_tokens(x):
         res.extend(y)
     return res
 
-word_ngram_range = (1,3)
 if __name__ == '__main__':
     df = {}
     for type, is_lower, source in product(['word_ngram', 'word_stemmed_ngram'], [False, True],['title', 'description', 'description_sentence']):
         df[(type, is_lower, source)] = Counter()
     df['sentence_number_in_descriptions'] = 0
 
-    def helper(tokens, tokens_lower, type, source):
-        df[(type, False, source)].update(set(word_ngrams(tokens, word_ngram_range)))
-        df[(type, True, source)].update(set(word_ngrams(tokens_lower, word_ngram_range)))
+    def helper(tokens, tokens_lower, type, source, word_ngram_range=None):
+        if word_ngram_range is not None:
+            df[(type, False, source)].update(set(word_ngrams(tokens, word_ngram_range)))
+            df[(type, True, source)].update(set(word_ngrams(tokens_lower, word_ngram_range)))
+        else:
+            df[(type, False, source)].update(set(tokens))
+            df[(type, True, source)].update(set(tokens_lower))
 
 
     for line in open('./data/data_files/ItemInfo_preprocessed.jsonl'):
