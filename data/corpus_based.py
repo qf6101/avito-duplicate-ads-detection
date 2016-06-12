@@ -378,10 +378,15 @@ cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_featur
     description_word_dtm_2, description_word_dtm_3, description_word_dtm_4
 ])
 
+cosine_similarity_features_3 = CosineSimilarityFeature('cosine_similarity_features_3', [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
+
 diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
                                              description_word_dtm_0, description_word_dtm_2, description_word_dtm_3,
                                              description_word_dtm_4]
                                             )
 
-feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, diff_term_idf_features]
+diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2', [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
+
+feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, cosine_similarity_features_3,
+                 diff_term_idf_features, diff_term_idf_features_2]
