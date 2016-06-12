@@ -138,6 +138,9 @@ class DocumentTermMatrixFromWordCounter(PickleNode):
 
 
 class DocumentTermMatrixUnion(VirtualNode):
+    def __init__(self, name, dependencies):
+        super(DocumentTermMatrixUnion, self).__init__(dependencies)
+        self.name = name
     def get_data(self, matrix_only=False):
         words = []
         dtms = []
@@ -327,7 +330,7 @@ title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm
 title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none,
                                                   min_df=3)
 
-title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion([title_word_dtm_4, title_word_2gram_dtm_1])
+title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0', [title_word_dtm_4, title_word_2gram_dtm_1])
 
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
