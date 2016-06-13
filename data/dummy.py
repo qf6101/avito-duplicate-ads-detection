@@ -13,7 +13,7 @@ def mergeLeftInOrder2(x, y, *args, **kargs):
 def gen_dummy_features():
     item_pairs = pd.concat((item_pairs_train, item_pairs_test))
     merged = mergeLeftInOrder2(item_pairs, item_info[['categoryID']], left_on='itemID_1', right_index=True)
-    res = pd.get_dummies(merged, columns=['categoryID'])
+    res = pd.get_dummies(merged[['categoryID']], columns=['categoryID'])
     return res
 
 dummy_features = generate_with_cache('dummy_features', gen_dummy_features)
