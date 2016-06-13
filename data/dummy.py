@@ -7,7 +7,7 @@ import numpy as np
 def mergeLeftInOrder2(x, y, *args, **kargs):
     x = x.copy()
     x["Order"] = np.arange(len(x))
-    z = pd.merge(x, y, *args, **kargs).sort("Order")
+    z = pd.merge(x, y, *args, **kargs).sort_values(by="Order")
     return z.drop("Order", 1)
 
 def gen_dummy_features():
