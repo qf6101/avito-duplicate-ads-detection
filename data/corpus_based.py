@@ -141,6 +141,7 @@ class DocumentTermMatrixUnion(VirtualNode):
     def __init__(self, name, dependencies):
         super(DocumentTermMatrixUnion, self).__init__(dependencies)
         self.name = name
+
     def get_data(self, matrix_only=False):
         words = []
         dtms = []
@@ -330,7 +331,8 @@ title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm
 title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none,
                                                   min_df=3)
 
-title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0', [title_word_dtm_4, title_word_2gram_dtm_1])
+title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0',
+                                                   [title_word_dtm_4, title_word_2gram_dtm_1])
 
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
@@ -366,30 +368,25 @@ description_word_lsa_1_3 = RepresentationModel('description_word_lsa_1_3', descr
                                                model=TruncatedSVD(n_components=100, n_iter=20, random_state=3),
                                                dtm_transformer=TfidfTransformer()
                                                )
-title_word_nmf_1_0 = RepresentationModel('title_word_nmf_1_0', title_word_dtm_1,
+title_word_nmf_0_0 = RepresentationModel('title_word_nmf_0_0', title_word_dtm_1,
                                          model=NMF(n_components=100, random_state=4),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
-title_word_nmf_1_1 = RepresentationModel('title_word_nmf_1_1', title_word_dtm_1,
-                                         model=TruncatedSVD(n_components=100, random_state=5),
+title_word_nmf_0_1 = RepresentationModel('title_word_nmf_0_1', title_word_dtm_1,
+                                         model=NMF(n_components=100, random_state=5, max_iter=30),
                                          dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                    ('tfidf_transformer', TfidfTransformer())])
                                          )
-description_word_nmf_1_0 = RepresentationModel('description_word_nmf_1_0', description_word_dtm_1,
-                                               model=NMF(n_components=100, random_state=4),
+description_word_nmf_4_0 = RepresentationModel('description_word_nmf_4_0', description_word_dtm_1,
+                                               model=NMF(n_components=100, random_state=6, max_iter=30),
                                                dtm_transformer=Binarizer(copy=False)
                                                )
-description_word_nmf_1_1 = RepresentationModel('description_word_nmf_1_1', description_word_dtm_1,
-                                               model=TruncatedSVD(n_components=100, random_state=5),
+description_word_nmf_4_1 = RepresentationModel('description_word_nmf_4_1', description_word_dtm_1,
+                                               model=NMF(n_components=100, random_state=7, max_iter=30),
                                                dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                          ('tfidf_transformer', TfidfTransformer())])
                                                )
 
-models = [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0, description_word_dtm_1,
-          title_word_lsa_1_0, title_word_lsa_1_1,
-          description_word_lsa_1_0, description_word_lsa_1_1, description_word_lsa_1_2, description_word_lsa_1_3
-          # title_word_nmf_1_0, title_word_nmf_1_1, description_word_nmf_1_0, description_word_nmf_1_1,
-          ]
 cosine_similarity_features = CosineSimilarityFeature('cosine_similarity_features',
                                                      [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0,
                                                       description_word_dtm_1,
@@ -407,6 +404,10 @@ cosine_similarity_features_3 = CosineSimilarityFeature('cosine_similarity_featur
                                                        [title_word_2gram_dtm_0, title_word_2gram_dtm_1,
                                                         title_word_1_2gram_dtm_0])
 
+cosine_similarity_features_4 = CosineSimilarityFeature('cosine_similarity_features_4', [
+    title_word_nmf_0_0, title_word_nmf_0_1, description_word_nmf_4_0, description_word_nmf_4_1
+])
+
 diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
                                              description_word_dtm_0, description_word_dtm_2, description_word_dtm_3,
@@ -417,4 +418,10 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, cosine_similarity_features_3,
-                 diff_term_idf_features, diff_term_idf_features_2]
+                 cosine_similarity_features_4,
+                 diff_term_idf_features, diff_term_idf_features_2, ]
+
+
+def make_all():
+    for n in feature_nodes:
+        n.make()
