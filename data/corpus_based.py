@@ -28,6 +28,23 @@ dfs = RootNode([dfs_file])
 item_pairs_train_file = get_cache_file('item_pairs_train.pickle')
 item_pairs_test_file = get_cache_file('item_pairs_train.pickle')
 
+item_info = RootNode([get_cache_file('item_info_train.pickle'), get_cache_file('item_info_test.pickle')])
+
+class ItemInfoColumn(PickleNode):
+    def __init__(self, name, column):
+        super(ItemInfoColumn, self).__init__(get_cache_file(name+'.pickle'), [item_info])
+        self.name = name
+        self.column = column
+
+    def compute(self):
+        from .item import item_info
+        self.data = item_info[self.column].values
+
+    def decorate_data(self):
+        return self.data
+
+price = ItemInfoColumn('price', 'price')
+
 
 class PairRelation(PickleNode):
     def __init__(self):
@@ -321,6 +338,33 @@ class DiffTermIdfFeature(VectorSimilarityFeatureBase):
 
         return feats
 
+class PredictionFeature(PickleNode):
+    def __init__(self, name, vec_model, model, y, y_transformer=None):
+        super(PredictionFeature, self).__init__(get_cache_file(name+'.pickle'), [vec_model]+[y, pair_relation])
+        self.name = name
+        self.model = model
+        self.y_transformer = y_transformer
+
+    def compute(self):
+        X = self.dependencies[0].get_data(matrix_only=True)
+        y = self.dependencies[1].get_data()
+        if self.y_transformer is not None:
+            y = self.y_transformer(y)
+        self.model.fit(X, y)
+        self.prediction_ = self.predict(X)
+
+        I, J = pair_relation.get_data()
+        feats = OrderedDict()
+        feats[self.name+'__1'] = self.prediction_[I]
+        feats[self.name+'__2'] = self.prediction_[J]
+        self.feats = feats
+
+    def decorate_data(self, feature_only=True):
+        if feature_only:
+            return self.feats
+        else:
+            return self.feats, self.prediction_, self.model
+
 
 from sklearn.decomposition import TruncatedSVD, NMF
 
@@ -348,6 +392,16 @@ description_word_dtm_3 = DocumentTermMatricFilter('description_word_dtm_3', desc
                                                   WordFilter.remove_stop_words)
 description_word_dtm_4 = DocumentTermMatricFilter('description_word_dtm_4', description_word_dtm_0,
                                                   WordFilter.remove_stop_words)
+
+def fillna_and_log(x):
+    x = x.copy()
+    x[np.isnan(x)] = 0
+    return np.log(1+x)
+
+from sklearn.linear_model import LassoCV
+description_word_dtm_0_predict_price = PredictionFeature('description_word_dtm_0_predict_price', description_word_dtm_0,
+                                                         LassoCV(random_state=123, n_jobs=6, n_alphas=10), price,
+                                                         y_transformer=fillna_and_log)
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
@@ -421,7 +475,7 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
-                 diff_term_idf_features, diff_term_idf_features_2, ]
+                 diff_term_idf_features, diff_term_idf_features_2, description_word_dtm_0_predict_price]
 
 
 def make_all():
