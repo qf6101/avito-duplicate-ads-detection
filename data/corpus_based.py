@@ -270,18 +270,24 @@ class VectorSimilarityFeatureBase(PickleNode):
 
 
 class CosineSimilarityFeature(VectorSimilarityFeatureBase):
-    def __init__(self, name, vec_models):
+    def __init__(self, name, vec_models, add_variants=True):
         self.vec_models = vec_models
         super(CosineSimilarityFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
+        self.add_variants = add_variants
 
     def compute_for_model(self, m, I, J):
         feats = OrderedDict()
-        feat_names = [m.name + '__' + version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
         V0 = m.get_data(matrix_only=True)
-        V1 = binarizer.fit_transform(V0)
-        V2 = tfidf_transformer.fit_transform(V0)
-        V3 = tfidf_transformer.fit_transform(V1)
-        for k, V in zip(feat_names, [V0, V1, V2, V3]):
+        if self.add_variants:
+            feat_names = [m.name + '__' + version for version in ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
+            V1 = binarizer.fit_transform(V0)
+            V2 = tfidf_transformer.fit_transform(V0)
+            V3 = tfidf_transformer.fit_transform(V1)
+            Vs = [V0, V1, V2, V3]
+        else:
+            feat_names = [m.name]
+            Vs = [V0]
+        for k, V in zip(feat_names, Vs):
             V = l2_normalizer_inplace.fit_transform(V)
             if sp.issparse(V):
                 feats[k] = np.array((V[I].multiply(V[J])).sum(axis=1)).ravel()
@@ -388,25 +394,22 @@ description_word_nmf_4_1 = RepresentationModel('description_word_nmf_4_1', descr
                                                )
 
 cosine_similarity_features = CosineSimilarityFeature('cosine_similarity_features',
-                                                     [title_word_dtm_0, title_word_dtm_1, description_word_dtm_0,
+                                                     [title_word_dtm_0, title_word_dtm_1, title_word_dtm_2,
+                                                      title_word_dtm_3, title_word_dtm_4, description_word_dtm_0,
                                                       description_word_dtm_1,
-                                                      title_word_lsa_1_0, title_word_lsa_1_1,
-                                                      description_word_lsa_1_0, description_word_lsa_1_1,
-                                                      description_word_lsa_1_2, description_word_lsa_1_3
+                                                      description_word_dtm_2, description_word_dtm_3,
+                                                      description_word_dtm_4, title_word_2gram_dtm_0,
+                                                      title_word_2gram_dtm_1,
+                                                      title_word_1_2gram_dtm_0,
                                                       ])
 
 cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_features_2', [
-    title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
-    description_word_dtm_2, description_word_dtm_3, description_word_dtm_4,
-])
-
-cosine_similarity_features_3 = CosineSimilarityFeature('cosine_similarity_features_3',
-                                                       [title_word_2gram_dtm_0, title_word_2gram_dtm_1,
-                                                        title_word_1_2gram_dtm_0])
-
-cosine_similarity_features_4 = CosineSimilarityFeature('cosine_similarity_features_4', [
+    title_word_lsa_1_0, title_word_lsa_1_1,
+    description_word_lsa_1_0, description_word_lsa_1_1,
+    description_word_lsa_1_2, description_word_lsa_1_3,
     title_word_nmf_0_0, title_word_nmf_0_1, description_word_nmf_4_0, description_word_nmf_4_1
-])
+
+], add_variants=False)
 
 diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_2, title_word_dtm_3, title_word_dtm_4,
@@ -417,8 +420,7 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
 diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
-feature_nodes = [cosine_similarity_features, cosine_similarity_features_2, cosine_similarity_features_3,
-                 cosine_similarity_features_4,
+feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, diff_term_idf_features_2, ]
 
 
