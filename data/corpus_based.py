@@ -351,13 +351,13 @@ class PredictionFeature(PickleNode):
         if self.y_transformer is not None:
             y = self.y_transformer(y)
         self.model.fit(X, y)
-        self.prediction_ = self.predict(X)
+        self.prediction_ = self.model.predict(X)
 
         I, J = pair_relation.get_data()
         feats = OrderedDict()
         feats[self.name+'__1'] = self.prediction_[I]
         feats[self.name+'__2'] = self.prediction_[J]
-        self.feats = feats
+        self.feats = pd.DataFrame(feats)
 
     def decorate_data(self, feature_only=True):
         if feature_only:
