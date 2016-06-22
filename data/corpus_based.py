@@ -399,8 +399,8 @@ def fillna_and_log(x):
     return np.log(1+x)
 
 from sklearn.linear_model import SGDRegressor
-description_word_dtm_0_predict_price = PredictionFeature('description_word_dtm_0_predict_price', description_word_dtm_0,
-                                                         SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132), price,
+title_word_1_2gram_dtm_0_predict_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_price', title_word_1_2gram_dtm_0,
+                                                         SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132, n_iter=20), price,
                                                          y_transformer=fillna_and_log)
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
@@ -475,7 +475,7 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
-                 diff_term_idf_features, diff_term_idf_features_2, description_word_dtm_0_predict_price]
+                 diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_price]
 
 
 def make_all():
