@@ -546,7 +546,7 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_log_price,
-                 title_description_dtm_0_predict_log_price, title_word2vec_web_cosine]
+                 title_description_dtm_0_predict_log_price, title_word2vec_web_cosine, description_word2vec_web_cosine]
 
 def make_all():
     for n in feature_nodes:
