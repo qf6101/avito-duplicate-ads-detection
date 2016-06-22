@@ -398,9 +398,9 @@ def fillna_and_log(x):
     x[np.isnan(x)] = 0
     return np.log(1+x)
 
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import SGDRegressor
 description_word_dtm_0_predict_price = PredictionFeature('description_word_dtm_0_predict_price', description_word_dtm_0,
-                                                         Lasso(random_state=123), price,
+                                                         SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132), price,
                                                          y_transformer=fillna_and_log)
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
