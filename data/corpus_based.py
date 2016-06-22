@@ -258,13 +258,48 @@ class RepresentationModel(PickleNode):
             return self.embedding, self.model
 
 
+
+from . import dir_here
+import os
+def get_word2vec_model_file(name):
+    return os.path.join(dir_here, '../external_model/RusVectōrēs', name+'.model.bin.gz')
+
+word2vec_model_web = RootNode([get_word2vec_model_file('web')])
+
 from sklearn.preprocessing import Normalizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import Binarizer
 
 l2_normalizer_inplace = Normalizer(norm='l2', copy=False)
+l1_normalizer_inplace = Normalizer(norm='l1', copy=False)
 binarizer = Binarizer()
 tfidf_transformer = TfidfTransformer()
+import gensim
+class Word2VecModel(PickleNode):
+    def __init__(self, name, dtm_node, model_node):
+        super(Word2VecModel, self).__init__(get_cache_file(name+'.pickle'), [dtm_node, model_node])
+        self.name = name
+
+    def compute(self):
+        pass
+
+    def get_data(self, matrix_only=True):
+        model = gensim.models.Word2Vec.load_word2vec_format(self.dependencies[1].target_files[0], binary=True)
+        words = np.array([x.split('_')[0] for x in model.index2word])
+        V = pd.DataFrame(model.syn0, index=words)
+        V = V.groupby(level=0).mean()
+        words1 = np.array(V.index)
+
+        words2, dtm = self.dependencies[0].get_data()
+        words2 = np.array(words2)
+
+        mask1 = np.in1d(words1, words2, assume_unique=True)
+        mask2 = np.in1d(words2, words1, assume_unique=True)
+        V = V.values[mask1, :]
+        dtm = dtm[:, mask2]
+        dtm = l1_normalizer_inplace.fit_transform(dtm)
+        return dtm.dot(V)
+
 
 from multiprocessing import Pool
 from itertools import repeat
@@ -278,9 +313,13 @@ class VectorSimilarityFeatureBase(PickleNode):
         ## debug
         # for m in self.vec_models:
         #    feats.update(self.compute_for_model(m, I, J))
-        pool = Pool(min(len(self.vec_models), 5))
-        for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
-            feats.update(res)
+        if self.mp:
+            pool = Pool(min(len(self.vec_models), 5))
+            for res in pool.starmap(self.compute_for_model, zip(self.vec_models, repeat(I), repeat(J))):
+                feats.update(res)
+        else:
+            for res in [self.compute_for_model(x, I, J) for x in self.vec_models]:
+                feats.update(res)
 
         self.feats = pd.DataFrame(feats)
 
@@ -289,10 +328,11 @@ class VectorSimilarityFeatureBase(PickleNode):
 
 
 class CosineSimilarityFeature(VectorSimilarityFeatureBase):
-    def __init__(self, name, vec_models, add_variants=True):
+    def __init__(self, name, vec_models, add_variants=True, mp=True):
         self.vec_models = vec_models
         super(CosineSimilarityFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
         self.add_variants = add_variants
+        self.mp = mp
 
     def compute_for_model(self, m, I, J):
         feats = OrderedDict()
@@ -383,6 +423,11 @@ title_word_dtm_1 = DocumentTermMatricFilter('title_word_dtm_1', title_word_dtm_0
 title_word_dtm_2 = DocumentTermMatrix('title_word_dtm_2', slot=('word_ngram', True, 'title'))
 title_word_dtm_3 = DocumentTermMatricFilter('title_word_dtm_3', title_word_dtm_2, WordFilter.remove_stop_words)
 title_word_dtm_4 = DocumentTermMatricFilter('title_word_dtm_4', title_word_dtm_0, WordFilter.remove_stop_words)
+
+title_word_dtm_5 = DocumentTermMatrix('title_word_dtm_5', slot=('word_stemmed_ngram', False, 'title'))
+title_word2vec_web = Word2VecModel('title_word2vec_web', title_word_dtm_5, word2vec_model_web)
+title_word2vec_web_cosine = CosineSimilarityFeature('title_word2vec_web_cosine', [title_word2vec_web], add_variants=False, mp=False)
+
 
 title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm_0', source='title_stemmed', lower=True,
                                                            counter_params={'ngram_range': (2, 2)})
@@ -498,8 +543,7 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_log_price,
-                 title_description_dtm_0_predict_log_price]
-
+                 title_description_dtm_0_predict_log_price, title_word2vec_web_cosine]
 
 def make_all():
     for n in feature_nodes:
