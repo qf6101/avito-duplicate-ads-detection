@@ -339,11 +339,13 @@ class DiffTermIdfFeature(VectorSimilarityFeatureBase):
         return feats
 
 class PredictionFeature(PickleNode):
-    def __init__(self, name, vec_model, model, y, y_transformer=None):
+    def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None):
         super(PredictionFeature, self).__init__(get_cache_file(name+'.pickle'), [vec_model]+[y, pair_relation])
         self.name = name
         self.model = model
         self.y_transformer = y_transformer
+        self.keep_true = keep_true
+        self.true_name = true_name
 
     def compute(self):
         X = self.dependencies[0].get_data(matrix_only=True)
@@ -357,6 +359,9 @@ class PredictionFeature(PickleNode):
         feats = OrderedDict()
         feats[self.name+'__1'] = self.prediction_[I]
         feats[self.name+'__2'] = self.prediction_[J]
+        if self.keep_true:
+            feats[self.true_name+'__1'] = y[I]
+            feats[self.true_name+'__2'] = y[J]
         self.feats = pd.DataFrame(feats)
 
     def decorate_data(self, feature_only=True):
@@ -399,9 +404,9 @@ def fillna_and_log(x):
     return np.log(1+x)
 
 from sklearn.linear_model import SGDRegressor
-title_word_1_2gram_dtm_0_predict_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_price', title_word_1_2gram_dtm_0,
-                                                         SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132, n_iter=20), price,
-                                                         y_transformer=fillna_and_log)
+title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_log_price', title_word_1_2gram_dtm_0,
+                                                               SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132, n_iter=20), price,
+                                                               y_transformer=fillna_and_log, keep_true=True, true_name='log_price')
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
@@ -475,7 +480,7 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
-                 diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_price]
+                 diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_log_price]
 
 
 def make_all():
