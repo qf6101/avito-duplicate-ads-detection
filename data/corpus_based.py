@@ -442,6 +442,9 @@ description_word_dtm_3 = DocumentTermMatricFilter('description_word_dtm_3', desc
                                                   WordFilter.remove_stop_words)
 description_word_dtm_4 = DocumentTermMatricFilter('description_word_dtm_4', description_word_dtm_0,
                                                   WordFilter.remove_stop_words)
+description_word_dtm_5 = DocumentTermMatrix('description_word_dtm_5', slot=('word_stemmed_ngram', False, 'description'))
+description_word2vec_web = Word2VecModel('description_word2vec_web', description_word_dtm_5, word2vec_model_web)
+description_word2vec_web_cosine = CosineSimilarityFeature('description_word2vec_web_cosine', [description_word2vec_web], add_variants=False, mp=False)
 
 title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0',
                                                    [title_word_dtm_4, title_word_2gram_dtm_1])
