@@ -30,9 +30,10 @@ item_pairs_test_file = get_cache_file('item_pairs_train.pickle')
 
 item_info = RootNode([get_cache_file('item_info_train.pickle'), get_cache_file('item_info_test.pickle')])
 
+
 class ItemInfoColumn(PickleNode):
     def __init__(self, name, column):
-        super(ItemInfoColumn, self).__init__(get_cache_file(name+'.pickle'), [item_info])
+        super(ItemInfoColumn, self).__init__(get_cache_file(name + '.pickle'), [item_info])
         self.name = name
         self.column = column
 
@@ -42,6 +43,7 @@ class ItemInfoColumn(PickleNode):
 
     def decorate_data(self):
         return self.data
+
 
 price = ItemInfoColumn('price', 'price')
 
@@ -338,9 +340,10 @@ class DiffTermIdfFeature(VectorSimilarityFeatureBase):
 
         return feats
 
+
 class PredictionFeature(PickleNode):
     def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None):
-        super(PredictionFeature, self).__init__(get_cache_file(name+'.pickle'), [vec_model]+[y, pair_relation])
+        super(PredictionFeature, self).__init__(get_cache_file(name + '.pickle'), [vec_model] + [y, pair_relation])
         self.name = name
         self.model = model
         self.y_transformer = y_transformer
@@ -357,11 +360,11 @@ class PredictionFeature(PickleNode):
 
         I, J = pair_relation.get_data()
         feats = OrderedDict()
-        feats[self.name+'__1'] = self.prediction_[I]
-        feats[self.name+'__2'] = self.prediction_[J]
+        feats[self.name + '__1'] = self.prediction_[I]
+        feats[self.name + '__2'] = self.prediction_[J]
         if self.keep_true:
-            feats[self.true_name+'__1'] = y[I]
-            feats[self.true_name+'__2'] = y[J]
+            feats[self.true_name + '__1'] = y[I]
+            feats[self.true_name + '__2'] = y[J]
         self.feats = pd.DataFrame(feats)
 
     def decorate_data(self, feature_only=True):
@@ -386,9 +389,6 @@ title_word_2gram_dtm_0 = DocumentTermMatrixFromWordCounter('title_word_2gram_dtm
 title_word_2gram_dtm_1 = DocumentTermMatricFilter('title_word_2gram_dtm_1', title_word_2gram_dtm_0, WordFilter.none,
                                                   min_df=3)
 
-title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0',
-                                                   [title_word_dtm_4, title_word_2gram_dtm_1])
-
 description_word_dtm_0 = DocumentTermMatrix('description_word_dtm_0', slot=('word_stemmed_ngram', True, 'description'))
 description_word_dtm_1 = DocumentTermMatricFilter('description_word_dtm_1', description_word_dtm_0,
                                                   WordFilter.contain_alphabet)
@@ -398,15 +398,32 @@ description_word_dtm_3 = DocumentTermMatricFilter('description_word_dtm_3', desc
 description_word_dtm_4 = DocumentTermMatricFilter('description_word_dtm_4', description_word_dtm_0,
                                                   WordFilter.remove_stop_words)
 
+title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0',
+                                                   [title_word_dtm_4, title_word_2gram_dtm_1])
+title_description_dtm_0 = DocumentTermMatrixUnion('title_description_dtm_0',
+                                                  [title_word_dtm_4, title_word_2gram_dtm_1, description_word_dtm_4])
+
+
 def fillna_and_log(x):
     x = x.copy()
     x[np.isnan(x)] = 0
-    return np.log(1+x)
+    return np.log(1 + x)
+
 
 from sklearn.linear_model import SGDRegressor
-title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_log_price', title_word_1_2gram_dtm_0,
-                                                               SGDRegressor(penalty='elasticnet', l1_ratio=0.7, random_state=132, n_iter=20), price,
-                                                               y_transformer=fillna_and_log, keep_true=True, true_name='log_price')
+
+title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_log_price',
+                                                               title_word_1_2gram_dtm_0,
+                                                               SGDRegressor(penalty='elasticnet', l1_ratio=0.7,
+                                                                            random_state=132, n_iter=20), price,
+                                                               y_transformer=fillna_and_log, keep_true=True,
+                                                               true_name='log_price')
+
+title_description_dtm_0_predict_log_price = PredictionFeature('title_description_dtm_0_predict_log_price',
+                                                              title_description_dtm_0,
+                                                              SGDRegressor(penalty='elasticnet', l1_ratio=0.7,
+                                                                           random_state=133, n_iter=30), price,
+                                                              y_transformer=fillna_and_log)
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
@@ -480,7 +497,8 @@ diff_term_idf_features_2 = DiffTermIdfFeature('diff_term_idf_features_2',
                                               [title_word_2gram_dtm_0, title_word_2gram_dtm_1])
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
-                 diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_log_price]
+                 diff_term_idf_features, diff_term_idf_features_2, title_word_1_2gram_dtm_0_predict_log_price,
+                 title_description_dtm_0_predict_log_price]
 
 
 def make_all():
