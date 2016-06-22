@@ -398,9 +398,9 @@ def fillna_and_log(x):
     x[np.isnan(x)] = 0
     return np.log(1+x)
 
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import Lasso
 description_word_dtm_0_predict_price = PredictionFeature('description_word_dtm_0_predict_price', description_word_dtm_0,
-                                                         LassoCV(random_state=123, n_jobs=6, n_alphas=10), price,
+                                                         Lasso(random_state=123), price,
                                                          y_transformer=fillna_and_log)
 
 title_word_lsa_1_0 = RepresentationModel('title_word_lsa_1_0', title_word_dtm_1,
