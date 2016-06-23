@@ -30,4 +30,4 @@ def gen_categoryID_shuffle(seed=0, n_shuffle=20):
     return categoryID
 
 dummy_features = generate_with_cache('dummy_features', gen_dummy_features)
-categoryID_shuffle = gen_categoryID_shuffle(seed=1324, n_shuffle=20)
+categoryID_shuffle_features = gen_categoryID_shuffle(seed=1324, n_shuffle=20)
