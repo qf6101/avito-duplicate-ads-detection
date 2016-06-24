@@ -529,14 +529,14 @@ cosine_similarity_features = CosineSimilarityFeature('cosine_similarity_features
                                                       description_word_dtm_1, description_word_dtm_0_1,
                                                       description_word_dtm_1_1, title_word_2gram_dtm_0,
                                                       title_word_2gram_dtm_0_1, title_word_1_2gram_dtm_0,
-                                                      ])
+                                                      ], mp=False)
 
 cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_features_2', [
     title_word_lsa_0_1, title_word_lsa_0_1_1,
     description_word_lsa_0_1, description_word_lsa_0_1_1,
     title_word_nmf_0_1, title_word_nmf_0_1_1,
     description_word_nmf_0_1, description_word_nmf_0_1_1
-], add_variants=False)
+], add_variants=False, mp=False)
 
 
 word2vec_web_cosine = CosineSimilarityFeature('word2vec_web_cosine', [title_word2vec_web, description_word2vec_web],
