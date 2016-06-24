@@ -485,7 +485,7 @@ description_word_lsa_0_1_1 = RepresentationModel('description_word_lsa_0_1_1', d
 
 ## nmf
 title_word_nmf_0_1 = RepresentationModel('title_word_nmf_0_1', title_word_dtm_0_1,
-                                         model=NMF(n_components=100, random_state=4),
+                                         model=NMF(n_components=100, random_state=4, max_iter=30),
                                          dtm_transformer=Binarizer(copy=False)
                                          )
 title_word_nmf_0_1_1 = RepresentationModel('title_word_nmf_0_1_1', title_word_dtm_0_1,
