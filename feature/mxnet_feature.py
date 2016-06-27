@@ -25,11 +25,17 @@ images_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/images"
 mxnet_model_parent_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/mxnetmodels"
 
 # 模型文件名称作为键，模型文件的目录、模型前缀和epoch数量作为值
-mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39), 
-                  "v3" : ("inception-v3", "Inception-7", 1), 
-                  "21k" : ("inception-21k", "Inception", 9)}
+mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39)}
+
+#mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39), 
+#                  "v3" : ("inception-v3", "Inception-7", 1), 
+#                  "21k" : ("inception-21k", "Inception", 9)}
 
 mxnet_mean_img_path = {"bn" : "mean_224.nd"}
+
+LINE_BATCH_SIZE = 5
+NUMPY_BATCH_SIZE = 20
+GPU = mx.gpu(1)
 
 
 def init_models(mxnet_model_parent_dir,mxnet_model_dir_prefix, mxnet_mean_img_path):
@@ -37,7 +43,7 @@ def init_models(mxnet_model_parent_dir,mxnet_model_dir_prefix, mxnet_mean_img_pa
     mean_img_dict = {}
     #遍历所有的模型
     for (name,(dir, prefix, num_epoch)) in mxnet_model_dir_prefix.items() :
-        model = mx.model.FeedForward.load(mxnet_model_parent_dir + "/" + dir + "/" + prefix, num_epoch, ctx=mx.gpu(), numpy_batch_size=100)
+        model = mx.model.FeedForward.load(mxnet_model_parent_dir + "/" + dir + "/" + prefix, num_epoch, ctx=GPU, numpy_batch_size=NUMPY_BATCH_SIZE)
         # get internals from model's symbol
         internals = model.symbol.get_internals()
         # get feature layer symbol out of internals
@@ -45,7 +51,7 @@ def init_models(mxnet_model_parent_dir,mxnet_model_dir_prefix, mxnet_mean_img_pa
         # Make a new model by using an internal symbol. We can reuse all parameters from model we trained before
         # In this case, we must set ```allow_extra_params``` to True
         # Because we don't need params from FullyConnected symbol
-        feature_extractor = mx.model.FeedForward(ctx=mx.gpu(1), symbol=fea_symbol, numpy_batch_size=100,
+        feature_extractor = mx.model.FeedForward(ctx=GPU, symbol=fea_symbol, numpy_batch_size=NUMPY_BATCH_SIZE,
                                          arg_params=model.arg_params, aux_params=model.aux_params,
                                          allow_extra_params=True)
         models_dict[name] = feature_extractor
@@ -53,6 +59,7 @@ def init_models(mxnet_model_parent_dir,mxnet_model_dir_prefix, mxnet_mean_img_pa
             mean_img_dict[name] = mx.nd.load(mxnet_model_parent_dir + "/" + dir + "/" + mxnet_mean_img_path.get(name))["mean_img"]
     return (models_dict, mean_img_dict)
 
+#@profile
 def preprocess_image(path, mean_img, method, show_img=False):
     """
     预处理图像
@@ -61,8 +68,10 @@ def preprocess_image(path, mean_img, method, show_img=False):
     method: 使用哪种预处理方式
     """
     # load image
-    img = io.imread(path)
-    if (len(img.shape) == 2):
+    img = cv2.imread(path)
+    img = img[:,:,[2,1,0]]
+    # 判断图片是否是灰度图
+    if (len(img.shape) == 2 or (len(img.shape) == 3 and img.shape[2] == 1) ):
         img = gray2rgb(img)
     # we crop image from center
     short_egde = min(img.shape[:2])
@@ -70,11 +79,12 @@ def preprocess_image(path, mean_img, method, show_img=False):
     xx = int((img.shape[1] - short_egde) / 2)
     crop_img = img[yy : yy + short_egde, xx : xx + short_egde]
     
+    #@profile
     def precess_helper(resize_l, resize_r) :
         # resize to 224, 224
-        resized_img = transform.resize(crop_img, (resize_l, resize_r))
+        resized_img = cv2.resize(crop_img, (resize_l, resize_r))
         # convert to numpy.ndarray
-        sample = np.asarray(resized_img) * 256
+        sample = resized_img
         # swap axes to make image from (224, 224, 4) to (3, 224, 224)
         sample = np.swapaxes(sample, 0, 2)
         sample = np.swapaxes(sample, 1, 2)
@@ -105,7 +115,6 @@ def batch_image_mxnet_feature(img_ids, models, means):
     批量获得图像特征
     """
     # {{}}
-    
     result_dict = dict( (img_id, {}) for img_id in img_ids )
     paths = batch_image_location(img_ids)
     for model_name in models.keys():
@@ -116,12 +125,12 @@ def batch_image_mxnet_feature(img_ids, models, means):
                 img_sample.append(preprocess_image(path, means.get(model_name), model_name, False))
             else:
                 img_sample.append(preprocess_image(path, None, model_name, False))
-        samples = np.row_stack(img_sample)
+        samples = np.vstack(img_sample)
         global_pooling_feature = models.get(model_name).predict(samples)
         result = []
         for i in range(len(paths)):
             img_id = img_ids[i]
-            result_dict[img_id][model_name] =  global_pooling_feature[i,:,0,0].tolist()
+            result_dict[img_id][model_name] =  global_pooling_feature[i,:,0,0]
     return result_dict
             
         
@@ -160,12 +169,23 @@ def compare_images_from_minority(img_features_l, img_features_r, comp_func):
     #保持长度短的在左边
     if len(img_features_l) > len(img_features_r):
         img_features_l, img_features_r = img_features_r, img_features_l
+    
+    # 计算图片平均的相似度
+    img_feature_acc_l = np.zeros_like(img_features_l[0])
+    img_feature_acc_r = np.zeros_like(img_features_r[0])
+    for i in img_features_l : img_feature_acc_l += i
+    for i in img_features_r : img_feature_acc_r += i
+    img_feature_acc_l /= len(img_features_l)  
+    img_feature_acc_r /= len(img_features_r) 
+    batch_mean_sim = comp_func(img_feature_acc_l, img_feature_acc_r)
+    
     # 最小的相似度     
     batch_min_sim = sys.maxsize
     # 最大的相似度
     batch_max_sim = -sys.maxsize
     # 相似度的和
     sum_sim = 0
+    
     for img_f_l in img_features_l:
         # 图片相似度，选择右边和当前图片相似度最接近的作为这个值
         img_sim = -sys.maxsize
@@ -178,7 +198,7 @@ def compare_images_from_minority(img_features_l, img_features_r, comp_func):
         if batch_max_sim < img_sim:
             batch_max_sim = img_sim
         sum_sim += img_sim
-    return [batch_min_sim, batch_max_sim, sum_sim / len(img_features_l) ]
+    return [batch_min_sim, batch_max_sim, sum_sim / len(img_features_l),batch_mean_sim ]
 
 #@profile
 def compare_images_batch(img_ids_pairs, models, means, comp_func):
@@ -194,7 +214,7 @@ def compare_images_batch(img_ids_pairs, models, means, comp_func):
     result = []
     for img_ids_pair in img_ids_pairs:
         if len(img_ids_pair[0]) <=0 or len(img_ids_pair[1]) <=0:
-            result.append(dict( (x, [np.nan] * 3) for x in feature_types ))
+            result.append(dict( (x, [np.nan] * 4) for x in feature_types ))
         else :    
             # 获得各自商品的图片特征, 结果如 [{"bn":feature, "21k":feature}]
             img_feature_l = [ img_features[img_id_l] for img_id_l in img_ids_pair[0] ]
@@ -226,22 +246,50 @@ if __name__ == '__main__':
     import json
     # 获得所有的模型
     (models, means) = init_models(mxnet_model_parent_dir, mxnet_model_dir_prefix, mxnet_mean_img_path)
-    jsonify = lambda x: json.dumps(x, ensure_ascii=False)
+    model_names = list(models.keys())
+    # 通过排序，来进行对应
+    model_names.sort()
+    # 打印CSV header
+    header = ["line_num"]
+    for name in model_names : 
+        header += [name + "_batch_min_sim", name + "_batch_max_sim", name + "_batch_summeam_sim", name + "_batch_mean_sim"]
+    print(','.join(header))
+    #jsonify = lambda x: json.dumps(x, ensure_ascii=False)
     # 每次处理多少行的数据
-    batch_line_size = 100
-    f = open('test.txt')
+    batch_line_size = LINE_BATCH_SIZE
+    #f = open('test.txt')
+    line_num = 0
     while True:
         line_count = 0
         img_ids_pairs = []
-        for line in f:
-            line = json.loads(line.rstrip())
-            img_ids_pairs.append((parse_int_list(line['images_array_1']), parse_int_list(line['images_array_2'])))
-            line_count += 1
-            if line_count == batch_line_size:
-                break
-        if line_count == 0:
+        line_num_process = []
+        line_num_start = line_num
+        # 需要防止的错误类型：
+        # 1. 读错误，利用行号来记录哪些行被读成功，没有读成功的不参加处理，程序运行结束后统一处理
+        # 2. 预测错误，通过标记为“ERROR”来表示
+        for line in sys.stdin:
+            try:
+                # 行号增加放在开头，无论是否错误都会增加
+                line_num += 1
+                line = json.loads(line.rstrip())
+                img_ids_pairs.append((parse_int_list(line['images_array_1']), parse_int_list(line['images_array_2'])))
+                line_count += 1
+                # 读错误，这个就不会加入
+                line_num_process.append(line_num)
+                if line_count == batch_line_size:
+                    break
+            except Exception:
+                print( str(line_num) + ": ReadError")
+        
+        # 没有可读的行时，进行退出程序
+        if line_num_start == line_num:
             break
         else:
-            result = compare_images_batch(img_ids_pairs, models, means, cos_sim)
-            for x in result:
-                print(jsonify(x))
+            try:
+                result = compare_images_batch(img_ids_pairs, models, means, cos_sim)
+                for i in range(len(result)) :
+                    sim_score = []
+                    for name in model_names: sim_score += result[i][name]
+                    print(str(line_num_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
+            except Exception:
+                print(",".join([str(num) for num in line_num_process]) + ": FeatureError")
