@@ -25,13 +25,12 @@ images_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/images"
 mxnet_model_parent_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/mxnetmodels"
 
 # 模型文件名称作为键，模型文件的目录、模型前缀和epoch数量作为值
-mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39)}
+#mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39)}
 
 #mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39), 
 #                  "v3" : ("inception-v3", "Inception-7", 1), 
 #                  "21k" : ("inception-21k", "Inception", 9)}
 
-mxnet_mean_img_path = {"bn" : "mean_224.nd"}
 
 LINE_BATCH_SIZE = 5
 NUMPY_BATCH_SIZE = 20
@@ -244,6 +243,12 @@ if __name__ == '__main__':
     """
     import sys
     import json
+    model_selection = sys.argv[1]
+    mxnet_mean_img_path = {"bn" : "mean_224.nd"}
+    mxnet_model_dir_prefix_all = {"bn" : ("inception-bn", "Inception_BN", 39), 
+        "v3" : ("inception-v3", "Inception-7", 1), 
+        "21k" : ("inception-21k", "Inception", 9)}
+    mxnet_model_dir_prefix = {model_selection : mxnet_model_dir_prefix_all[model_selection]}
     # 获得所有的模型
     (models, means) = init_models(mxnet_model_parent_dir, mxnet_model_dir_prefix, mxnet_mean_img_path)
     model_names = list(models.keys())
@@ -262,7 +267,7 @@ if __name__ == '__main__':
     while True:
         line_count = 0
         img_ids_pairs = []
-        line_num_process = []
+        index_process = []
         line_num_start = line_num
         # 需要防止的错误类型：
         # 1. 读错误，利用行号来记录哪些行被读成功，没有读成功的不参加处理，程序运行结束后统一处理
@@ -272,14 +277,15 @@ if __name__ == '__main__':
                 # 行号增加放在开头，无论是否错误都会增加
                 line_num += 1
                 line = json.loads(line.rstrip())
+                index = line['index']
                 img_ids_pairs.append((parse_int_list(line['images_array_1']), parse_int_list(line['images_array_2'])))
                 line_count += 1
                 # 读错误，这个就不会加入
-                line_num_process.append(line_num)
+                index_process.append(index)
                 if line_count == batch_line_size:
                     break
             except Exception:
-                print( str(line_num) + ": ReadError")
+                print( str(index) + ": IndexLineReadError")
         
         # 没有可读的行时，进行退出程序
         if line_num_start == line_num:
@@ -290,6 +296,6 @@ if __name__ == '__main__':
                 for i in range(len(result)) :
                     sim_score = []
                     for name in model_names: sim_score += result[i][name]
-                    print(str(line_num_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
+                    print(str(index_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
             except Exception:
-                print(",".join([str(num) for num in line_num_process]) + ": FeatureError")
+                print(",".join([str(num) for num in index_process]) + ": IndexLineFeatureError")
