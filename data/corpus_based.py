@@ -373,9 +373,10 @@ tfidf_transformer_nonorm = TfidfTransformer(norm=None)
 
 
 class DiffTermIdfFeature(VectorSimilarityFeatureBase):
-    def __init__(self, name, vec_models):
+    def __init__(self, name, vec_models, mp=True):
         self.vec_models = vec_models
         super(DiffTermIdfFeature, self).__init__(get_cache_file(name + '.pickle'), vec_models + [pair_relation])
+        self.mp = mp
 
     def compute_for_model(self, m, I, J):
         feats = OrderedDict()
