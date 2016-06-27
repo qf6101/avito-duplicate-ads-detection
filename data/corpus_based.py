@@ -276,6 +276,10 @@ def get_word2vec_model_file(name):
 
 
 word2vec_model_web = RootNode([get_word2vec_model_file('web')])
+word2vec_model_news = RootNode([get_word2vec_model_file('news')])
+word2vec_model_ruscorpora = RootNode([get_word2vec_model_file('ruscorpora')])
+word2vec_model_ruwikiruscorpora = RootNode([get_word2vec_model_file('ruwikiruscorpora')])
+
 
 from sklearn.preprocessing import Normalizer
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -462,6 +466,12 @@ title_description_dtm_0 = DocumentTermMatrixUnion('title_description_dtm_0',
 ## word2vec
 title_word2vec_web = Word2VecModel('title_word2vec_web', title_word_dtm_0_1, word2vec_model_web)
 description_word2vec_web = Word2VecModel('description_word2vec_web', description_word_dtm_0_1, word2vec_model_web)
+title_word2vec_news = Word2VecModel('title_word2vec_news', title_word_dtm_0_1, word2vec_model_news)
+description_word2vec_news = Word2VecModel('description_word2vec_news', description_word_dtm_0_1, word2vec_model_news)
+title_word2vec_ruwikiruscorpora = Word2VecModel('title_word2vec_ruwikiruscorpora', title_word_dtm_0_1, word2vec_model_ruwikiruscorpora)
+description_word2vec_ruwikiruscorpora = Word2VecModel('description_word2vec_ruwikiruscorpora', description_word_dtm_0_1, word2vec_model_ruwikiruscorpora)
+title_word2vec_ruscorpora = Word2VecModel('title_word2vec_ruscorpora', title_word_dtm_0_1, word2vec_model_ruscorpora)
+description_word2vec_ruscorpora = Word2VecModel('description_word2vec_ruscorpora', description_word_dtm_0_1, word2vec_model_ruscorpora)
 
 
 ## lsa
@@ -540,7 +550,8 @@ cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_featur
 ], add_variants=False, mp=False)
 
 
-word2vec_web_cosine = CosineSimilarityFeature('word2vec_web_cosine', [title_word2vec_web, description_word2vec_web],
+word2vec_web_cosine = CosineSimilarityFeature('word2vec_web_cosine', [title_word2vec_web, title_word2vec_news, title_word2vec_ruscorpora, title_word2vec_ruwikiruscorpora,
+                                                                      description_word2vec_web, description_word2vec_news, description_word2vec_ruscorpora, description_word2vec_ruwikiruscorpora],
                                                     add_variants=False, mp=False)
 
 ## diff max idf
