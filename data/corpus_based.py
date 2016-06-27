@@ -550,7 +550,7 @@ cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_featur
 ], add_variants=False, mp=False)
 
 
-word2vec_web_cosine = CosineSimilarityFeature('word2vec_web_cosine', [title_word2vec_web, title_word2vec_news, title_word2vec_ruscorpora, title_word2vec_ruwikiruscorpora,
+word2vec_cosine = CosineSimilarityFeature('word2vec_cosine', [title_word2vec_web, title_word2vec_news, title_word2vec_ruscorpora, title_word2vec_ruwikiruscorpora,
                                                                       description_word2vec_web, description_word2vec_news, description_word2vec_ruscorpora, description_word2vec_ruwikiruscorpora],
                                                     add_variants=False, mp=False)
 
@@ -564,7 +564,7 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, title_word_1_2gram_dtm_0_predict_log_price,
-                 title_description_dtm_0_predict_log_price, word2vec_web_cosine]
+                 title_description_dtm_0_predict_log_price, word2vec_cosine]
 
 
 def make_all():
