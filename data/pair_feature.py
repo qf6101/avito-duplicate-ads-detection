@@ -8,7 +8,8 @@ __all__ = ['gen_features',
            'simple_features_train', 'simple_features_test',
            'title_features_train', 'title_features_test',
            'description_features_train', 'description_features_test',
-           'aggregation_features_train', 'aggregation_features_test']
+           'aggregation_features_train', 'aggregation_features_test',
+           'ncd_features_train', 'ncd_features_test']
 
 from feature import *
 
