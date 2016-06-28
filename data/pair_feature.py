@@ -38,3 +38,8 @@ aggregation_features_train = generate_with_cache('aggregation_features_train',
                                                  lambda: gen_features(gen_aggregation_feature, item_pairs_train))
 aggregation_features_test = generate_with_cache('aggregation_features_test',
                                                 lambda: gen_features(gen_aggregation_feature, item_pairs_test))
+
+ncd_features_train = generate_with_cache('ncd_features_train',
+                                            lambda: gen_features(gen_ncd_feature, item_pairs_train))
+ncd_features_test = generate_with_cache('ncd_features_test',
+                                           lambda: gen_features(gen_ncd_feature, item_pairs_test))
