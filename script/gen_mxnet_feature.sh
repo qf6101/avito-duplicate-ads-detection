@@ -15,6 +15,7 @@ function work(){
 }
 
 # Generate image feature for training data set and testing data set
-cat ../data/data_files/image_itemPairs_train.csv | work $1 > ../data/data_files/mxnet_feature_train_${1}.csv
+# cat ../data/data_files/image_itemPairs_train.csv | work $1 > ../data/data_files/mxnet_feature_train_${1}.csv
+sed '2,221835d' ../data/data_files/image_itemPairs_train.csv | work $1 >> ../data/data_files/mxnet_feature_train_${1}.csv
 #cat ../data/data_files/image_itemPairs_train.csv | work > ../data/data_files/image_feature_train.csv
 cat ../data/data_files/image_itemPairs_test.csv | work $1 > ../data/data_files/mxnet_feature_test_${1}.csv

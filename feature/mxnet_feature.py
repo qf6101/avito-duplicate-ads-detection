@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG,
                     filename='mxnet_feature.log',
                     filemode='a')
 
-__all__ = [ 'mxnet_model_parent_dir', 'mxnet_model_dir_prefix', 'mxnet_mean_img_path', 'init_models', 'batch_image_mxnet_feature', 'compare_images_batch', 'cos_sim']
+# __all__ = [ 'mxnet_model_parent_dir', 'mxnet_model_dir_prefix', 'mxnet_mean_img_path', 'init_models', 'batch_image_mxnet_feature', 'compare_images_batch', 'cos_sim']
 
 
 
@@ -32,9 +32,10 @@ mxnet_model_parent_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/mx
 #                  "21k" : ("inception-21k", "Inception", 9)}
 
 
-LINE_BATCH_SIZE = 5
+LINE_BATCH_SIZE = 1
 NUMPY_BATCH_SIZE = 20
 GPU = mx.gpu(1)
+USE_MP = False
 
 
 def init_models(mxnet_model_parent_dir,mxnet_model_dir_prefix, mxnet_mean_img_path):
@@ -108,6 +109,12 @@ def preprocess_image(path, mean_img, method, show_img=False):
     else:
         raise Exception('Model Error', method)
 
+
+from multiprocessing import Pool
+from itertools import repeat
+
+pool = Pool(8)
+
 #@profile
 def batch_image_mxnet_feature(img_ids, models, means):
     """
@@ -118,12 +125,12 @@ def batch_image_mxnet_feature(img_ids, models, means):
     paths = batch_image_location(img_ids)
     for model_name in models.keys():
         # 获得所有的图像预处理数据
-        img_sample = []
-        for path in paths:
-            if model_name in means.keys():
+        if USE_MP:
+            img_sample = pool.starmap(preprocess_image, zip(paths, repeat(means.get(model_name)), repeat(model_name), repeat(False)))
+        else:
+            img_sample = []
+            for path in paths:
                 img_sample.append(preprocess_image(path, means.get(model_name), model_name, False))
-            else:
-                img_sample.append(preprocess_image(path, None, model_name, False))
         samples = np.vstack(img_sample)
         global_pooling_feature = models.get(model_name).predict(samples)
         result = []
@@ -157,7 +164,10 @@ def batch_img_pair_mxnet_features(img_pairs, models, img_means):
     img_pairs: 图片对列表  [([1,2,3],[4,5,6]), ([1,2,3],[4,5,6])], 一些元组的集合，元组第一个是左边，第二个是右边
     """
     img_ids = sum([ a + b for a,b in img_pairs], [])
-    return batch_image_mxnet_feature(img_ids, models, img_means)
+    if len(img_ids) == 0:
+        return None
+    else:
+        return batch_image_mxnet_feature(img_ids, models, img_means)
     
 
 def compare_images_from_minority(img_features_l, img_features_r, comp_func):
@@ -298,4 +308,5 @@ if __name__ == '__main__':
                     for name in model_names: sim_score += result[i][name]
                     print(str(index_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
             except Exception:
+                print(e, out=sys.stderr)
                 print(",".join([str(num) for num in index_process]) + ": IndexLineFeatureError")
