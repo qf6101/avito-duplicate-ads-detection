@@ -152,7 +152,7 @@ class DocumentTermMatrix(PickleNode):
         V = []
 
         def docs():
-            if self.sentence_as_doc:
+            if not self.sentence_as_doc:
                 for line in open(preprocessed_text_file):
                     line = json.loads(line.rstrip())
                     tokens = collect_tokens(line[source])
