@@ -100,7 +100,7 @@ def _filter_min_df(words, dtm, min_df):
 class SentenceRange(PickleNode):
     def __init__(self, name, slot):
         super().__init__(get_cache_file(name + '.pickle'),
-                                                 [preprocessed_text, dfs])
+                         [preprocessed_text, dfs])
         self.name = name
         self.slot = slot
 
@@ -322,6 +322,8 @@ from sklearn.preprocessing import Normalizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import Binarizer
 
+l2_normalizer = Normalizer(norm='l2', copy=True)
+l1_normalizer = Normalizer(norm='l1', copy=True)
 l2_normalizer_inplace = Normalizer(norm='l2', copy=False)
 l1_normalizer_inplace = Normalizer(norm='l1', copy=False)
 binarizer = Binarizer()
@@ -390,7 +392,7 @@ class CosineSimilarityFeature(VectorSimilarityFeatureBase):
 
     def compute_for_model(self, m, I, J):
         feats = OrderedDict()
-        V0 = m.get_data(matrix_only=True)
+        V0 = m.get_data(matrix_only=True).copy()
         if self.add_variants:
             feat_names = [m.name + '__' + version + '__cosine' for version in
                           ['tf', 'binary_tf', 'tfidf', 'binary_tfidf']]
@@ -459,7 +461,7 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
         feats = []
         for model in self.vec_models:
             feats_per_model = []
-            V = model.get_data(matrix_only=True)
+            V = model.get_data(matrix_only=True).copy()
 
             if self.dtm_transformer is not None:
                 V = self.dtm_transformer_name.fit_transform(V)
@@ -471,7 +473,8 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
                     S = S.T
                 feats_per_model.append(self._gen_aggregated_features(S))
             feats.append(np.array(feats_per_model))
-        columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for model in self.vec_models
+        columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for
+                   model in self.vec_models
                    for i in
                    [0, 1] for suffix in ['min', 'max', 'mean']]
         return pd.DataFrame(np.hstack(feats),
@@ -567,7 +570,8 @@ description_sentence_range = SentenceRange('description_sentence_range',
 
 description_sentence__binary__agg_cosine = AggregatedCosineSimilarityFeature(
     'description_sentence_word_dtm_0__binary__agg_cosine',
-    [description_sentence_word_dtm_0, description_sentence_word_dtm_0_1, description_sentence_word_dtm_1, description_sentence_word_dtm_1_1],
+    [description_sentence_word_dtm_0, description_sentence_word_dtm_0_1, description_sentence_word_dtm_1,
+     description_sentence_word_dtm_1_1],
     description_sentence_range,
     dtm_transformer=binarizer,
     dtm_transformer_name='binary_tf'
@@ -595,40 +599,40 @@ description_word2vec_ruscorpora = Word2VecModel('description_word2vec_ruscorpora
 ## lsa
 title_word_lsa_0_1 = RepresentationModel('title_word_lsa_0_1', title_word_dtm_0_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
-                                         dtm_transformer=Binarizer(copy=False)
+                                         dtm_transformer=binarizer
                                          )
 title_word_lsa_0_1_1 = RepresentationModel('title_word_lsa_0_1_1', title_word_dtm_0_1,
                                            model=TruncatedSVD(n_components=100, n_iter=20, random_state=1),
-                                           dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                           dtm_transformer=Pipeline([('binarizer', binarizer),
                                                                      ('tfidf_transformer', TfidfTransformer())])
                                            )
 description_word_lsa_0_1 = RepresentationModel('description_word_lsa_0_1', description_word_dtm_0_1,
                                                model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
-                                               dtm_transformer=Binarizer(copy=False)
+                                               dtm_transformer=binarizer
                                                )
 description_word_lsa_0_1_1 = RepresentationModel('description_word_lsa_0_1_1', description_word_dtm_0_1,
                                                  model=TruncatedSVD(n_components=100, n_iter=20, random_state=1),
-                                                 dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                 dtm_transformer=Pipeline([('binarizer', binarizer),
                                                                            ('tfidf_transformer', TfidfTransformer())])
                                                  )
 
 ## nmf
 title_word_nmf_0_1 = RepresentationModel('title_word_nmf_0_1', title_word_dtm_0_1,
                                          model=NMF(n_components=100, random_state=4, max_iter=30),
-                                         dtm_transformer=Binarizer(copy=False)
+                                         dtm_transformer=binarizer
                                          )
 title_word_nmf_0_1_1 = RepresentationModel('title_word_nmf_0_1_1', title_word_dtm_0_1,
                                            model=NMF(n_components=100, random_state=5, max_iter=30),
-                                           dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                           dtm_transformer=Pipeline([('binarizer', binarizer),
                                                                      ('tfidf_transformer', TfidfTransformer())])
                                            )
 description_word_nmf_0_1 = RepresentationModel('description_word_nmf_0_1', description_word_dtm_0_1,
                                                model=NMF(n_components=100, random_state=6, max_iter=30),
-                                               dtm_transformer=Binarizer(copy=False)
+                                               dtm_transformer=binarizer
                                                )
 description_word_nmf_0_1_1 = RepresentationModel('description_word_nmf_0_1_1', description_word_dtm_0_1,
                                                  model=NMF(n_components=100, random_state=7, max_iter=30),
-                                                 dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
+                                                 dtm_transformer=Pipeline([('binarizer', binarizer),
                                                                            ('tfidf_transformer', TfidfTransformer())])
                                                  )
 
