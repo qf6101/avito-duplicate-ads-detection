@@ -97,13 +97,41 @@ def _filter_min_df(words, dtm, min_df):
     return words, dtm
 
 
+class SentenceRange(PickleNode):
+    def __init__(self, name, slot):
+        super().__init__(get_cache_file(name + '.pickle'),
+                                                 [preprocessed_text, dfs])
+        self.name = name
+        self.slot = slot
+
+    def compute(self):
+        source = self.slot[2]
+        if 'stemmed' in self.slot[0]:
+            source += '_stemmed'
+
+        self.sentence_range = [0]
+        for line in open(preprocessed_text_file):
+            line = json.loads(line.rstrip())
+            self.sentence_range.append(self.sentence_range[-1] + len(line[source]))
+
+    def decorate_data(self, as_slice=True):
+        if as_slice:
+            slices = []
+            for i in range(len(self.sentence_range) - 1):
+                slices.append(slice(self.sentence_range[i], self.sentence_range[i + 1]))
+                return slices
+        else:
+            return self.sentence_range
+
+
 class DocumentTermMatrix(PickleNode):
-    def __init__(self, name, slot, min_df=1):
+    def __init__(self, name, slot, sentence_as_doc=False, min_df=1):
         super(DocumentTermMatrix, self).__init__(get_cache_file(name + '.pickle'),
                                                  [preprocessed_text, dfs])
         self.name = name
         self.slot = slot
         self.min_df = min_df
+        self.sentence_as_doc = sentence_as_doc
 
     def compute(self):
         dfs = pickle.load(open('./data/data_files/df.pickle', 'rb'))
@@ -122,9 +150,19 @@ class DocumentTermMatrix(PickleNode):
         I = []
         J = []
         V = []
-        for i, line in enumerate(open(preprocessed_text_file)):
-            line = json.loads(line.rstrip())
-            tokens = collect_tokens(line[source])
+
+        def docs():
+            if self.sentence_as_doc:
+                for line in open(preprocessed_text_file):
+                    line = json.loads(line.rstrip())
+                    tokens = collect_tokens(line[source])
+                    yield tokens
+            else:
+                for line in open(preprocessed_text_file):
+                    line = json.loads(line.rstrip())
+                    yield from line[source]
+
+        for i, tokens in enumerate(docs()):
             if lower:
                 tokens = list(map(str.lower, tokens))
             for w, c in Counter(tokens).items():
@@ -280,7 +318,6 @@ word2vec_model_news = RootNode([get_word2vec_model_file('news')])
 word2vec_model_ruscorpora = RootNode([get_word2vec_model_file('ruscorpora')])
 word2vec_model_ruwikiruscorpora = RootNode([get_word2vec_model_file('ruwikiruscorpora')])
 
-
 from sklearn.preprocessing import Normalizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import Binarizer
@@ -400,6 +437,59 @@ class DiffTermIdfFeature(VectorSimilarityFeatureBase):
         return feats
 
 
+class AggregatedVectorSimilarityFeatureBase(PickleNode):
+    def __init__(self, name, vec_models, range, pre_normalized=False, dtm_transformer=None, dtm_transformer_name=''):
+        self.vec_models = vec_models
+        self.range = range
+        self.pre_normalized = pre_normalized
+        self.dtm_transformer = dtm_transformer
+        self.dtm_transformer_name = dtm_transformer_name
+
+        super().__init__(get_cache_file(name + '.pickle'), vec_models + [range, pair_relation])
+
+    @staticmethod
+    def _gen_aggregated_features(S):
+        s0 = S.max(axis=1)
+        s1 = S.max(axis=0)
+        return [np.min(s0), np.max(s0), np.mean(s0), np.min(s1), np.max(s1), np.mean(s1)]
+
+    def compute(self):
+        I, J = pair_relation.get_data()
+        slices = np.array(self.range.get_data())
+        feats = []
+        for model in self.vec_models:
+            feats_per_model = []
+            V = model.get_data(matrix_only=True)
+
+            if self.dtm_transformer is not None:
+                V = self.dtm_transformer_name.fit_transform(V)
+            if self.feature_name in ['cosine_similarity']:
+                V = l2_normalizer_inplace.fit_transform(V)
+            for rx, ry in zip(slices[I], slices[J]):
+                S = self.similarity_matrix(V[rx], V[ry])
+                if S.shape[0] > S.shape[1]:
+                    S = S.T
+                feats_per_model.append(self._gen_aggregated_features(S))
+            feats.append(np.array(feats_per_model))
+        columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for model in self.vec_models
+                   for i in
+                   [0, 1] for suffix in ['min', 'max', 'mean']]
+        return pd.DataFrame(np.hstack(feats),
+                            columns=columns)
+
+    def decorate_data(self):
+        return self.feats
+
+
+class AggregatedCosineSimilarityFeature(AggregatedVectorSimilarityFeatureBase):
+    feature_name = 'cosine_similarity'
+
+    @staticmethod
+    def similarity_matrix(Va, Vb):
+        # assume each row of Va, Vb as l2 norm 1
+        return Va.dot(Vb.T)
+
+
 class PredictionFeature(PickleNode):
     def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None):
         super(PredictionFeature, self).__init__(get_cache_file(name + '.pickle'), [vec_model] + [y, pair_relation])
@@ -457,6 +547,32 @@ description_word_dtm_1 = DocumentTermMatrix('description_word_dtm_1', slot=('wor
 description_word_dtm_1_1 = DocumentTermMatrixFilter('description_word_dtm_1_1', description_word_dtm_1,
                                                     WordFilter.remove_stop_words)
 
+description_sentence_word_dtm_0 = DocumentTermMatrix('description_sentence_word_dtm_0',
+                                                     slot=('word_stemmed_ngram', True, 'description_sentence'),
+                                                     sentence_as_doc=True,
+                                                     min_df=3)
+description_sentence_word_dtm_0_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_0_1',
+                                                             description_sentence_word_dtm_0,
+                                                             WordFilter.remove_stop_words)
+description_sentence_word_dtm_1 = DocumentTermMatrix('description_sentence_word_dtm_1',
+                                                     slot=('word_ngram', True, 'description_sentence'),
+                                                     sentence_as_doc=True,
+                                                     min_df=3)
+description_sentence_word_dtm_1_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_1_1',
+                                                             description_sentence_word_dtm_1,
+                                                             WordFilter.remove_stop_words)
+
+description_sentence_range = SentenceRange('description_sentence_range',
+                                           slot=('word_stemmed_ngram', True, 'description'))
+
+description_sentence__binary__agg_cosine = AggregatedCosineSimilarityFeature(
+    'description_sentence_word_dtm_0__binary__agg_cosine',
+    [description_sentence_word_dtm_0, description_sentence_word_dtm_0_1, description_sentence_word_dtm_1, description_sentence_word_dtm_1_1],
+    description_sentence_range,
+    dtm_transformer=binarizer,
+    dtm_transformer_name='binary_tf'
+)
+
 title_word_1_2gram_dtm_0 = DocumentTermMatrixUnion('title_word_1_2gram_dtm_0',
                                                    [title_word_dtm_0_1, title_word_2gram_dtm_0_1])
 title_description_dtm_0 = DocumentTermMatrixUnion('title_description_dtm_0',
@@ -468,11 +584,13 @@ title_word2vec_web = Word2VecModel('title_word2vec_web', title_word_dtm_0_1, wor
 description_word2vec_web = Word2VecModel('description_word2vec_web', description_word_dtm_0_1, word2vec_model_web)
 title_word2vec_news = Word2VecModel('title_word2vec_news', title_word_dtm_0_1, word2vec_model_news)
 description_word2vec_news = Word2VecModel('description_word2vec_news', description_word_dtm_0_1, word2vec_model_news)
-title_word2vec_ruwikiruscorpora = Word2VecModel('title_word2vec_ruwikiruscorpora', title_word_dtm_0_1, word2vec_model_ruwikiruscorpora)
-description_word2vec_ruwikiruscorpora = Word2VecModel('description_word2vec_ruwikiruscorpora', description_word_dtm_0_1, word2vec_model_ruwikiruscorpora)
+title_word2vec_ruwikiruscorpora = Word2VecModel('title_word2vec_ruwikiruscorpora', title_word_dtm_0_1,
+                                                word2vec_model_ruwikiruscorpora)
+description_word2vec_ruwikiruscorpora = Word2VecModel('description_word2vec_ruwikiruscorpora', description_word_dtm_0_1,
+                                                      word2vec_model_ruwikiruscorpora)
 title_word2vec_ruscorpora = Word2VecModel('title_word2vec_ruscorpora', title_word_dtm_0_1, word2vec_model_ruscorpora)
-description_word2vec_ruscorpora = Word2VecModel('description_word2vec_ruscorpora', description_word_dtm_0_1, word2vec_model_ruscorpora)
-
+description_word2vec_ruscorpora = Word2VecModel('description_word2vec_ruscorpora', description_word_dtm_0_1,
+                                                word2vec_model_ruscorpora)
 
 ## lsa
 title_word_lsa_0_1 = RepresentationModel('title_word_lsa_0_1', title_word_dtm_0_1,
@@ -513,11 +631,14 @@ description_word_nmf_0_1_1 = RepresentationModel('description_word_nmf_0_1_1', d
                                                  dtm_transformer=Pipeline([('binarizer', Binarizer(copy=False)),
                                                                            ('tfidf_transformer', TfidfTransformer())])
                                                  )
+
+
 ## prediction
 def fillna_and_log(x):
     x = x.copy()
     x[np.isnan(x)] = 0
     return np.log(1 + x)
+
 
 from sklearn.linear_model import SGDRegressor
 
@@ -549,10 +670,12 @@ cosine_similarity_features_2 = CosineSimilarityFeature('cosine_similarity_featur
     description_word_nmf_0_1, description_word_nmf_0_1_1
 ], add_variants=False, mp=False)
 
-
-word2vec_cosine = CosineSimilarityFeature('word2vec_cosine', [title_word2vec_web, title_word2vec_news, title_word2vec_ruscorpora, title_word2vec_ruwikiruscorpora,
-                                                                      description_word2vec_web, description_word2vec_news, description_word2vec_ruscorpora, description_word2vec_ruwikiruscorpora],
-                                                    add_variants=False, mp=False)
+word2vec_cosine = CosineSimilarityFeature('word2vec_cosine',
+                                          [title_word2vec_web, title_word2vec_news, title_word2vec_ruscorpora,
+                                           title_word2vec_ruwikiruscorpora,
+                                           description_word2vec_web, description_word2vec_news,
+                                           description_word2vec_ruscorpora, description_word2vec_ruwikiruscorpora],
+                                          add_variants=False, mp=False)
 
 ## diff max idf
 diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
