@@ -463,9 +463,11 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
 
     @staticmethod
     def _gen_aggregated_features(S):
+        if S.shape[0] == 0 or S.shape[1] == 0:
+            return [np.nan] * 6
         s0 = S.max(axis=1)
         s1 = S.max(axis=0)
-        return [np.min(s0), np.max(s0), np.mean(s0), np.min(s1), np.max(s1), np.mean(s1)]
+        return [s0.min(), s0.max(), s0.mean(), s1.min(), s1.max(), s1.mean()]
 
     def compute(self):
         I, J = pair_relation.get_data()
@@ -476,7 +478,7 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
             V = model.get_data(matrix_only=True).copy()
 
             if self.dtm_transformer is not None:
-                V = self.dtm_transformer_name.fit_transform(V)
+                V = self.dtm_transformer.fit_transform(V)
             if self.feature_name in ['cosine_similarity']:
                 V = l2_normalizer_inplace.fit_transform(V)
             for rx, ry in zip(slices[I], slices[J]):
@@ -489,7 +491,7 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
                    model in self.vec_models
                    for i in
                    [0, 1] for suffix in ['min', 'max', 'mean']]
-        return pd.DataFrame(np.hstack(feats),
+        self.feats = pd.DataFrame(np.hstack(feats),
                             columns=columns)
 
     def decorate_data(self):
@@ -572,14 +574,14 @@ description_word_dtm_1_1 = DocumentTermMatrixFilter('description_word_dtm_1_1', 
                                                     WordFilter.remove_stop_words)
 
 description_sentence_word_dtm_0 = DocumentTermMatrix('description_sentence_word_dtm_0',
-                                                     slot=('word_stemmed_ngram', True, 'description_sentence'),
+                                                     slot=('word_stemmed_ngram', True, 'description'),
                                                      sentence_as_doc=True,
                                                      min_df=3)
 description_sentence_word_dtm_0_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_0_1',
                                                              description_sentence_word_dtm_0,
                                                              WordFilter.remove_stop_words)
 description_sentence_word_dtm_1 = DocumentTermMatrix('description_sentence_word_dtm_1',
-                                                     slot=('word_ngram', True, 'description_sentence'),
+                                                     slot=('word_ngram', True, 'description'),
                                                      sentence_as_doc=True,
                                                      min_df=3)
 description_sentence_word_dtm_1_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_1_1',
@@ -720,7 +722,9 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, title_word_1_2gram_dtm_0_predict_log_price,
-                 title_description_dtm_0_predict_log_price, word2vec_cosine]
+                 title_description_dtm_0_predict_log_price, word2vec_cosine,
+                 description_sentence__binary__agg_cosine,
+                 ]
 
 
 def make_all():
