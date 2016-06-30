@@ -44,7 +44,19 @@ class ItemInfoColumn(PickleNode):
     def decorate_data(self):
         return self.data
 
+class IsTest(PickleNode):
+    def __init__(self):
+        super().__init__(get_cache_file('is_test' + '.pickle'), [item_info])
 
+    def compute(self):
+        from .item import item_info_train, item_info_test
+        self.data = np.zeros(item_info_train.shape[0]+item_info_test.shape[0])
+        self.data[item_info_train.shape[0]:] = 1
+
+    def decorate_data(self):
+        return self.data
+
+is_test = IsTest()
 price = ItemInfoColumn('price', 'price')
 
 
@@ -119,7 +131,7 @@ class SentenceRange(PickleNode):
             slices = []
             for i in range(len(self.sentence_range) - 1):
                 slices.append(slice(self.sentence_range[i], self.sentence_range[i + 1]))
-                return slices
+            return slices
         else:
             return self.sentence_range
 
@@ -494,13 +506,16 @@ class AggregatedCosineSimilarityFeature(AggregatedVectorSimilarityFeatureBase):
 
 
 class PredictionFeature(PickleNode):
-    def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None):
+    def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None,
+                 only_predict=False, predict_binary_probability=False):
         super(PredictionFeature, self).__init__(get_cache_file(name + '.pickle'), [vec_model] + [y, pair_relation])
         self.name = name
         self.model = model
         self.y_transformer = y_transformer
         self.keep_true = keep_true
         self.true_name = true_name
+        self.only_predict = only_predict
+        self.predict_binary_probability = predict_binary_probability
 
     def compute(self):
         X = self.dependencies[0].get_data(matrix_only=True)
@@ -508,18 +523,24 @@ class PredictionFeature(PickleNode):
         if self.y_transformer is not None:
             y = self.y_transformer(y)
         self.model.fit(X, y)
-        self.prediction_ = self.model.predict(X)
+        if not self.predict_binary_probability:
+            self.prediction_ = self.model.predict_proba(X)[:,1]
+        else:
+            self.prediction_ = self.model.predict(X)
 
-        I, J = pair_relation.get_data()
-        feats = OrderedDict()
-        feats[self.name + '__1'] = self.prediction_[I]
-        feats[self.name + '__2'] = self.prediction_[J]
-        if self.keep_true:
-            feats[self.true_name + '__1'] = y[I]
-            feats[self.true_name + '__2'] = y[J]
-        self.feats = pd.DataFrame(feats)
+        if not self.only_predict:
+            I, J = pair_relation.get_data()
+            feats = OrderedDict()
+            feats[self.name + '__1'] = self.prediction_[I]
+            feats[self.name + '__2'] = self.prediction_[J]
+            if self.keep_true:
+                feats[self.true_name + '__1'] = y[I]
+                feats[self.true_name + '__2'] = y[J]
+            self.feats = pd.DataFrame(feats)
 
     def decorate_data(self, feature_only=True):
+        if self.only_predict:
+            return self.prediction_
         if feature_only:
             return self.feats
         else:
@@ -644,7 +665,7 @@ def fillna_and_log(x):
     return np.log(1 + x)
 
 
-from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import SGDRegressor, SGDClassifier
 
 title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_log_price',
                                                                title_word_1_2gram_dtm_0,
@@ -652,6 +673,13 @@ title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gr
                                                                             random_state=132, n_iter=20), price,
                                                                y_transformer=fillna_and_log, keep_true=True,
                                                                true_name='log_price')
+title_word_1_2gram_dtm_0_predict_is_test = PredictionFeature('title_word_1_2gram_dtm_0_predict_is_test',
+                                                             title_word_1_2gram_dtm_0, \
+                                                             SGDClassifier(penalty='elasticnet', l1_ratio=0.7,
+                                                                           random_state=132, n_iter=20), is_test,
+                                                             y_transformer=None, keep_true=False,
+                                                             only_predict=True, predict_binary_probability=True,
+                                                             true_name='')
 
 title_description_dtm_0_predict_log_price = PredictionFeature('title_description_dtm_0_predict_log_price',
                                                               title_description_dtm_0,
@@ -686,7 +714,8 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_1, title_word_dtm_0_1,
                                              title_word_dtm_1_1, description_word_dtm_0,
                                              description_word_dtm_1, description_word_dtm_0_1,
-                                             description_word_dtm_1_1, title_word_2gram_dtm_0, title_word_2gram_dtm_0_1]
+                                             description_word_dtm_1_1, title_word_2gram_dtm_0,
+                                             title_word_2gram_dtm_0_1],
                                             )
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
