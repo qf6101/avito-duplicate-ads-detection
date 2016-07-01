@@ -461,8 +461,11 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
 
         super().__init__(get_cache_file(name + '.pickle'), vec_models + [range, pair_relation])
 
-    @staticmethod
-    def _gen_aggregated_features(S):
+    @classmethod
+    def _gen_aggregated_features(cls, Vx, Vy):
+        S = cls.similarity_matrix(Vx, Vy)
+        if S.shape[0] > S.shape[1]:
+            S = S.T
         if S.shape[0] == 0 or S.shape[1] == 0:
             return [np.nan] * 6
         s0 = S.max(axis=1)
@@ -473,19 +476,15 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
         I, J = pair_relation.get_data()
         slices = np.array(self.range.get_data())
         feats = []
+        pool = Pool(10)
         for model in self.vec_models:
-            feats_per_model = []
             V = model.get_data(matrix_only=True).copy()
 
             if self.dtm_transformer is not None:
                 V = self.dtm_transformer.fit_transform(V)
             if self.feature_name in ['cosine_similarity']:
                 V = l2_normalizer_inplace.fit_transform(V)
-            for rx, ry in zip(slices[I], slices[J]):
-                S = self.similarity_matrix(V[rx], V[ry])
-                if S.shape[0] > S.shape[1]:
-                    S = S.T
-                feats_per_model.append(self._gen_aggregated_features(S))
+            feats_per_model = pool.starmap(self._gen_aggregated_features, ((V[rx], V[ry]) for rx, ry in zip(slices[I], slices[J])))
             feats.append(np.array(feats_per_model))
         columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for
                    model in self.vec_models
@@ -501,8 +500,8 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
 class AggregatedCosineSimilarityFeature(AggregatedVectorSimilarityFeatureBase):
     feature_name = 'cosine_similarity'
 
-    @staticmethod
-    def similarity_matrix(Va, Vb):
+    @classmethod
+    def similarity_matrix(cls, Va, Vb):
         # assume each row of Va, Vb as l2 norm 1
         return Va.dot(Vb.T)
 
@@ -592,7 +591,7 @@ description_sentence_range = SentenceRange('description_sentence_range',
                                            slot=('word_stemmed_ngram', True, 'description'))
 
 description_sentence__binary__agg_cosine = AggregatedCosineSimilarityFeature(
-    'description_sentence_word_dtm_0__binary__agg_cosine',
+    'description_sentence__binary__agg_cosine',
     [description_sentence_word_dtm_0, description_sentence_word_dtm_0_1, description_sentence_word_dtm_1,
      description_sentence_word_dtm_1_1],
     description_sentence_range,
