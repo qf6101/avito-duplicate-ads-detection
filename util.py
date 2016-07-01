@@ -83,3 +83,16 @@ def char_ngrams(text_document, ngram_range, binary=False):
             else:
                 ngrams.append(token)
     return ngrams
+
+def binary_matrix_to_int(a):
+    return a.dot(1 << np.arange(a.shape[1]))
+
+def jaccard(a, b):
+    a = set(a)
+    b = set(b)
+    n_intersection = len(a.intersection(b))
+    n_union = len(a) + len(b) - n_intersection
+    if n_union == 0:
+        return 0.0
+    else:
+        return n_intersection / n_union

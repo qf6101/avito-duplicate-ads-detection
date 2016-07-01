@@ -4,18 +4,7 @@ from Levenshtein import jaro_winkler, distance as edit_distance
 __all__ = ['gen_simple_feature', 'gen_title_feature', 'gen_description_feature', 'gen_ncd_feature']
 
 
-def jaccard(a, b):
-    a = set(a)
-    b = set(b)
-    n_intersection = len(a.intersection(b))
-    n_union = len(a) + len(b) - n_intersection
-    if n_union == 0:
-        return 0.0
-    else:
-        return n_intersection / n_union
-
-
-from util import word_ngrams, char_ngrams
+from util import word_ngrams, char_ngrams, jaccard
 
 
 def word_jaccard_ngram(a, b, n):
