@@ -308,5 +308,5 @@ if __name__ == '__main__':
                     for name in model_names: sim_score += result[i][name]
                     print(str(index_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
             except Exception as e:
-                print(e, out=sys.stderr)
+                print(e, file=sys.stderr)
                 print(",".join([str(num) for num in index_process]) + ": IndexLineFeatureError")
