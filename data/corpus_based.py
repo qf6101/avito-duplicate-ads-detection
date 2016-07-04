@@ -44,17 +44,19 @@ class ItemInfoColumn(PickleNode):
     def decorate_data(self):
         return self.data
 
+
 class IsTest(PickleNode):
     def __init__(self):
         super().__init__(get_cache_file('is_test' + '.pickle'), [item_info])
 
     def compute(self):
         from .item import item_info_train, item_info_test
-        self.data = np.zeros(item_info_train.shape[0]+item_info_test.shape[0])
+        self.data = np.zeros(item_info_train.shape[0] + item_info_test.shape[0])
         self.data[item_info_train.shape[0]:] = 1
 
     def decorate_data(self):
         return self.data
+
 
 is_test = IsTest()
 price = ItemInfoColumn('price', 'price')
@@ -484,14 +486,15 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
                 V = self.dtm_transformer.fit_transform(V)
             if self.feature_name in ['cosine_similarity']:
                 V = l2_normalizer_inplace.fit_transform(V)
-            feats_per_model = pool.starmap(self._gen_aggregated_features, ((V[rx], V[ry]) for rx, ry in zip(slices[I], slices[J])))
+            feats_per_model = pool.starmap(self._gen_aggregated_features,
+                                           ((V[rx], V[ry]) for rx, ry in zip(slices[I], slices[J])))
             feats.append(np.array(feats_per_model))
         columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for
                    model in self.vec_models
                    for i in
                    [0, 1] for suffix in ['min', 'max', 'mean']]
         self.feats = pd.DataFrame(np.hstack(feats),
-                            columns=columns)
+                                  columns=columns)
 
     def decorate_data(self):
         return self.feats
@@ -524,8 +527,8 @@ class PredictionFeature(PickleNode):
         if self.y_transformer is not None:
             y = self.y_transformer(y)
         self.model.fit(X, y)
-        if not self.predict_binary_probability:
-            self.prediction_ = self.model.predict_proba(X)[:,1]
+        if self.predict_binary_probability:
+            self.prediction_ = self.model.predict_proba(X)[:, 1]
         else:
             self.prediction_ = self.model.predict(X)
 
@@ -717,6 +720,7 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                              description_word_dtm_1, description_word_dtm_0_1,
                                              description_word_dtm_1_1, title_word_2gram_dtm_0,
                                              title_word_2gram_dtm_0_1],
+                                            mp=False
                                             )
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
