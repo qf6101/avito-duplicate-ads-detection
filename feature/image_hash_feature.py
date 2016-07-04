@@ -20,9 +20,15 @@ def image_path(image_id):
     second_index = str(int(image_id) % 100)
     return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
 
+def whash_(image):
+    ''' bypass assert for small image '''
+    try:
+        return imagehash.whash(image)
+    except AssertionError:
+        return imagehash.ImageHash(np.zeros((8,8), dtype=bool))
 
 hash_names = ['ahash', 'phash', 'dhash', 'whash']
-hash_functions = [imagehash.average_hash, imagehash.phash, imagehash.dhash, imagehash.whash]
+hash_functions = [imagehash.average_hash, imagehash.phash, imagehash.dhash, whash_]
 
 
 def dhash(image_id):
