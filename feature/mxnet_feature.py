@@ -71,6 +71,8 @@ def preprocess_image(path, mean_img, method, show_img=False):
     """
     # load image
     img = cv2.imread(path)
+    if img is None:
+        return np.zeros((1, 3, 224, 224))
     img = img[:,:,[2,1,0]]
     # 判断图片是否是灰度图
     if (len(img.shape) == 2 or (len(img.shape) == 3 and img.shape[2] == 1) ):
