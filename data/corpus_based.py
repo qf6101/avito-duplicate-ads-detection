@@ -45,6 +45,20 @@ class ItemInfoColumn(PickleNode):
         return self.data
 
 
+class IsTest(PickleNode):
+    def __init__(self):
+        super().__init__(get_cache_file('is_test' + '.pickle'), [item_info])
+
+    def compute(self):
+        from .item import item_info_train, item_info_test
+        self.data = np.zeros(item_info_train.shape[0] + item_info_test.shape[0])
+        self.data[item_info_train.shape[0]:] = 1
+
+    def decorate_data(self):
+        return self.data
+
+
+is_test = IsTest()
 price = ItemInfoColumn('price', 'price')
 
 
@@ -119,7 +133,7 @@ class SentenceRange(PickleNode):
             slices = []
             for i in range(len(self.sentence_range) - 1):
                 slices.append(slice(self.sentence_range[i], self.sentence_range[i + 1]))
-                return slices
+            return slices
         else:
             return self.sentence_range
 
@@ -449,36 +463,38 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
 
         super().__init__(get_cache_file(name + '.pickle'), vec_models + [range, pair_relation])
 
-    @staticmethod
-    def _gen_aggregated_features(S):
+    @classmethod
+    def _gen_aggregated_features(cls, Vx, Vy):
+        S = cls.similarity_matrix(Vx, Vy)
+        if S.shape[0] > S.shape[1]:
+            S = S.T
+        if S.shape[0] == 0 or S.shape[1] == 0:
+            return [np.nan] * 6
         s0 = S.max(axis=1)
         s1 = S.max(axis=0)
-        return [np.min(s0), np.max(s0), np.mean(s0), np.min(s1), np.max(s1), np.mean(s1)]
+        return [s0.min(), s0.max(), s0.mean(), s1.min(), s1.max(), s1.mean()]
 
     def compute(self):
         I, J = pair_relation.get_data()
         slices = np.array(self.range.get_data())
         feats = []
+        pool = Pool(10)
         for model in self.vec_models:
-            feats_per_model = []
             V = model.get_data(matrix_only=True).copy()
 
             if self.dtm_transformer is not None:
-                V = self.dtm_transformer_name.fit_transform(V)
+                V = self.dtm_transformer.fit_transform(V)
             if self.feature_name in ['cosine_similarity']:
                 V = l2_normalizer_inplace.fit_transform(V)
-            for rx, ry in zip(slices[I], slices[J]):
-                S = self.similarity_matrix(V[rx], V[ry])
-                if S.shape[0] > S.shape[1]:
-                    S = S.T
-                feats_per_model.append(self._gen_aggregated_features(S))
+            feats_per_model = pool.starmap(self._gen_aggregated_features,
+                                           ((V[rx], V[ry]) for rx, ry in zip(slices[I], slices[J])))
             feats.append(np.array(feats_per_model))
         columns = ['{}__{}__{}__{}_{}'.format(model.name, self.dtm_transformer_name, self.feature_name, i, suffix) for
                    model in self.vec_models
                    for i in
                    [0, 1] for suffix in ['min', 'max', 'mean']]
-        return pd.DataFrame(np.hstack(feats),
-                            columns=columns)
+        self.feats = pd.DataFrame(np.hstack(feats),
+                                  columns=columns)
 
     def decorate_data(self):
         return self.feats
@@ -487,20 +503,23 @@ class AggregatedVectorSimilarityFeatureBase(PickleNode):
 class AggregatedCosineSimilarityFeature(AggregatedVectorSimilarityFeatureBase):
     feature_name = 'cosine_similarity'
 
-    @staticmethod
-    def similarity_matrix(Va, Vb):
+    @classmethod
+    def similarity_matrix(cls, Va, Vb):
         # assume each row of Va, Vb as l2 norm 1
         return Va.dot(Vb.T)
 
 
 class PredictionFeature(PickleNode):
-    def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None):
+    def __init__(self, name, vec_model, model, y, y_transformer=None, keep_true=False, true_name=None,
+                 only_predict=False, predict_binary_probability=False):
         super(PredictionFeature, self).__init__(get_cache_file(name + '.pickle'), [vec_model] + [y, pair_relation])
         self.name = name
         self.model = model
         self.y_transformer = y_transformer
         self.keep_true = keep_true
         self.true_name = true_name
+        self.only_predict = only_predict
+        self.predict_binary_probability = predict_binary_probability
 
     def compute(self):
         X = self.dependencies[0].get_data(matrix_only=True)
@@ -508,18 +527,24 @@ class PredictionFeature(PickleNode):
         if self.y_transformer is not None:
             y = self.y_transformer(y)
         self.model.fit(X, y)
-        self.prediction_ = self.model.predict(X)
+        if self.predict_binary_probability:
+            self.prediction_ = self.model.predict_proba(X)[:, 1]
+        else:
+            self.prediction_ = self.model.predict(X)
 
-        I, J = pair_relation.get_data()
-        feats = OrderedDict()
-        feats[self.name + '__1'] = self.prediction_[I]
-        feats[self.name + '__2'] = self.prediction_[J]
-        if self.keep_true:
-            feats[self.true_name + '__1'] = y[I]
-            feats[self.true_name + '__2'] = y[J]
-        self.feats = pd.DataFrame(feats)
+        if not self.only_predict:
+            I, J = pair_relation.get_data()
+            feats = OrderedDict()
+            feats[self.name + '__1'] = self.prediction_[I]
+            feats[self.name + '__2'] = self.prediction_[J]
+            if self.keep_true:
+                feats[self.true_name + '__1'] = y[I]
+                feats[self.true_name + '__2'] = y[J]
+            self.feats = pd.DataFrame(feats)
 
     def decorate_data(self, feature_only=True):
+        if self.only_predict:
+            return self.prediction_
         if feature_only:
             return self.feats
         else:
@@ -551,14 +576,14 @@ description_word_dtm_1_1 = DocumentTermMatrixFilter('description_word_dtm_1_1', 
                                                     WordFilter.remove_stop_words)
 
 description_sentence_word_dtm_0 = DocumentTermMatrix('description_sentence_word_dtm_0',
-                                                     slot=('word_stemmed_ngram', True, 'description_sentence'),
+                                                     slot=('word_stemmed_ngram', True, 'description'),
                                                      sentence_as_doc=True,
                                                      min_df=3)
 description_sentence_word_dtm_0_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_0_1',
                                                              description_sentence_word_dtm_0,
                                                              WordFilter.remove_stop_words)
 description_sentence_word_dtm_1 = DocumentTermMatrix('description_sentence_word_dtm_1',
-                                                     slot=('word_ngram', True, 'description_sentence'),
+                                                     slot=('word_ngram', True, 'description'),
                                                      sentence_as_doc=True,
                                                      min_df=3)
 description_sentence_word_dtm_1_1 = DocumentTermMatrixFilter('description_sentence_word_dtm_1_1',
@@ -569,7 +594,7 @@ description_sentence_range = SentenceRange('description_sentence_range',
                                            slot=('word_stemmed_ngram', True, 'description'))
 
 description_sentence__binary__agg_cosine = AggregatedCosineSimilarityFeature(
-    'description_sentence_word_dtm_0__binary__agg_cosine',
+    'description_sentence__binary__agg_cosine',
     [description_sentence_word_dtm_0, description_sentence_word_dtm_0_1, description_sentence_word_dtm_1,
      description_sentence_word_dtm_1_1],
     description_sentence_range,
@@ -644,7 +669,7 @@ def fillna_and_log(x):
     return np.log(1 + x)
 
 
-from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import SGDRegressor, SGDClassifier
 
 title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gram_dtm_0_predict_log_price',
                                                                title_word_1_2gram_dtm_0,
@@ -652,6 +677,13 @@ title_word_1_2gram_dtm_0_predict_log_price = PredictionFeature('title_word_1_2gr
                                                                             random_state=132, n_iter=20), price,
                                                                y_transformer=fillna_and_log, keep_true=True,
                                                                true_name='log_price')
+title_word_1_2gram_dtm_0_predict_is_test = PredictionFeature('title_word_1_2gram_dtm_0_predict_is_test',
+                                                             title_word_1_2gram_dtm_0, \
+                                                             SGDClassifier(penalty='elasticnet', l1_ratio=0.7,
+                                                                           random_state=132, n_iter=20), is_test,
+                                                             y_transformer=None, keep_true=False,
+                                                             only_predict=True, predict_binary_probability=True,
+                                                             true_name='')
 
 title_description_dtm_0_predict_log_price = PredictionFeature('title_description_dtm_0_predict_log_price',
                                                               title_description_dtm_0,
@@ -686,12 +718,16 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
                                             [title_word_dtm_0, title_word_dtm_1, title_word_dtm_0_1,
                                              title_word_dtm_1_1, description_word_dtm_0,
                                              description_word_dtm_1, description_word_dtm_0_1,
-                                             description_word_dtm_1_1, title_word_2gram_dtm_0, title_word_2gram_dtm_0_1]
+                                             description_word_dtm_1_1, title_word_2gram_dtm_0,
+                                             title_word_2gram_dtm_0_1],
+                                            mp=False
                                             )
 
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, title_word_1_2gram_dtm_0_predict_log_price,
-                 title_description_dtm_0_predict_log_price, word2vec_cosine]
+                 title_description_dtm_0_predict_log_price, word2vec_cosine,
+                 description_sentence__binary__agg_cosine,
+                 ]
 
 
 def make_all():
