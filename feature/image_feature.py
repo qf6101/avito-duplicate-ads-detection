@@ -142,6 +142,7 @@ def calc_hist_diff_128bins(left_img, right_img):
     """
     return calc_hist_diff(left_img, right_img, 128)
 
+header = ['min_hist_diff_8bins', 'max_hist_diff_8bins', 'avg_hist_diff_8bins', 'min_hist_diff_32bins', 'max_hist_diff_32bins', 'avg_hist_diff_32bins', 'min_hist_diff_64bins', 'max_hist_diff_64bins', 'avg_hist_diff_64bins', 'min_hist_diff_128bins', 'max_hist_diff_128bins', 'avg_hist_diff_128bins']
 
 if __name__ == '__main__':
     """ Generate image feature in parallel
@@ -157,20 +158,7 @@ if __name__ == '__main__':
         line = json.loads(line.rstrip())
         left_item = line['images_array_1']
         right_item = line['images_array_2']
-        min_hist_diff_8bins, max_hist_diff_8bins, avg_hist_diff_8bins, min_hist_diff_32bins, max_hist_diff_32bins, avg_hist_diff_32bins, min_hist_diff_64bins, max_hist_diff_64bins, avg_hist_diff_64bins, min_hist_diff_128bins, max_hist_diff_128bins, avg_hist_diff_128bins = gen_image_feature(
+        res = gen_image_feature(
             left_item, right_item)
-        res = OrderedDict([
-            ('min_hist_diff_8bins', min_hist_diff_8bins),
-            ('max_hist_diff_8bins', max_hist_diff_8bins),
-            ('avg_hist_diff_8bins', avg_hist_diff_8bins),
-            ('min_hist_diff_32bins', min_hist_diff_32bins),
-            ('max_hist_diff_32bins', max_hist_diff_32bins),
-            ('avg_hist_diff_32bins', avg_hist_diff_32bins),
-            ('min_hist_diff_64bins', min_hist_diff_64bins),
-            ('max_hist_diff_64bins', max_hist_diff_64bins),
-            ('avg_hist_diff_64bins', avg_hist_diff_64bins),
-            ('min_hist_diff_128bins', min_hist_diff_128bins),
-            ('max_hist_diff_128bins', max_hist_diff_128bins),
-            ('avg_hist_diff_128bins', avg_hist_diff_128bins),
-        ])
-        print(jsonify(res))
+
+        print(','.join(map(str, res)))
