@@ -80,9 +80,9 @@ def compare_images(left_img_locs, right_img_locs):
     # hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
     # hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
     # hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
-    hist_diff_8bins = [0.0, 0.0, 0.0]
-    hist_diff_32bins = [0.0, 0.0, 0.0]
-    hist_diff_64bins = [0.0, 0.0, 0.0]
+    hist_diff_8bins = (0.0, 0.0, 0.0)
+    hist_diff_32bins = (0.0, 0.0, 0.0)
+    hist_diff_64bins = (0.0, 0.0, 0.0)
     hist_diff_128bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_128bins)
     return hist_diff_8bins + hist_diff_32bins + hist_diff_64bins + hist_diff_128bins
 
