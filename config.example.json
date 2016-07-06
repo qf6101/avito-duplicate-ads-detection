@@ -1,3 +1,5 @@
 {
-  "image_root": "/home/lq/remote/ad15/luoq/work/competition/kaggle/avito-duplicate-ads-detection/images"
+  "image_root": "/home/lq/remote/ad15/luoq/work/competition/kaggle/avito-duplicate-ads-detection/images",
+  "mxnet_model_root": "/home/lq/work/competition/kaggle/avito-duplicate-ads-detection/external_model/inception"
+
 }

@@ -5,7 +5,7 @@ import numpy as np
 import logging
 import sys
 import mxnet as mx
-from skimage import io, transform
+from config import config
 from skimage.color import gray2rgb
 
 logging.basicConfig(level=logging.DEBUG,
@@ -14,15 +14,17 @@ logging.basicConfig(level=logging.DEBUG,
                     filename='mxnet_feature.log',
                     filemode='a')
 
+logger = logging.getLogger("mxnet_feature")
+
 # __all__ = [ 'mxnet_model_parent_dir', 'mxnet_model_dir_prefix', 'mxnet_mean_img_path', 'init_models', 'batch_image_mxnet_feature', 'compare_images_batch', 'cos_sim']
 
 
 
 # root of image locations
-images_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/images"
+images_dir = config['image_root']
 
 # 模型文件放置的顶级目录
-mxnet_model_parent_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/mxnetmodels"
+mxnet_model_parent_dir = config['mxnet_model_root']
 
 # 模型文件名称作为键，模型文件的目录、模型前缀和epoch数量作为值
 #mxnet_model_dir_prefix = {"bn" : ("inception-bn", "Inception_BN", 39)}
@@ -32,9 +34,9 @@ mxnet_model_parent_dir = "/home/hzqianfeng/work/avito-duplicate-ads-detection/mx
 #                  "21k" : ("inception-21k", "Inception", 9)}
 
 
-LINE_BATCH_SIZE = 1
-NUMPY_BATCH_SIZE = 20
-GPU = mx.gpu(1)
+global LINE_BATCH_SIZE
+global NUMPY_BATCH_SIZE
+global GPU
 USE_MP = False
 
 
@@ -246,29 +248,43 @@ def cos_sim(v1, v2):
 def parse_int_list(x):
     return list(map(int, [x for x in x.split(', ') if len(x)>0]))
 
+# CSV header
+def build_header(model_names):
+    header = ["line_num"]
+    for name in model_names:
+        header.extend('mxnet_{}_batch_{}_sim'.format(name, x) for x in  ['min', 'max', 'summean', 'mean'])
+    return header
 
 if __name__ == '__main__':
     """ Generate image feature in parallel
         Input is from stdin, output is to stdout
     """
-    import sys
     import json
-    model_selection = sys.argv[1]
+    import argparse
+
     mxnet_mean_img_path = {"bn" : "mean_224.nd"}
-    mxnet_model_dir_prefix_all = {"bn" : ("inception-bn", "Inception_BN", 39), 
-        "v3" : ("inception-v3", "Inception-7", 1), 
+    mxnet_model_dir_prefix_all = {"bn" : ("inception-bn", "Inception_BN", 39),
+        "v3" : ("inception-v3", "Inception-7", 1),
         "21k" : ("inception-21k", "Inception", 9)}
+    parser = argparse.ArgumentParser("generate pairwise mxnet similarity")
+    parser.add_argument('--model', help='mxnet model name', choices=mxnet_model_dir_prefix_all.keys(), required=True)
+    parser.add_argument('--gpu', help='gpu', type=int, required=True)
+    parser.add_argument('--line-batch-size', default=1, type=int, help='how many pairs in a batch')
+    parser.add_argument('--numpy-batch-size', default=5, type=int, help='numpy batch size in mxnet')
+
+    args = parser.parse_args()
+    GPU = mx.gpu(args.gpu)
+    LINE_BATCH_SIZE = args.line_batch_size
+    NUMPY_BATCH_SIZE = args.numpy_batch_size
+
+    model_selection = args.model
     mxnet_model_dir_prefix = {model_selection : mxnet_model_dir_prefix_all[model_selection]}
     # 获得所有的模型
     (models, means) = init_models(mxnet_model_parent_dir, mxnet_model_dir_prefix, mxnet_mean_img_path)
     model_names = list(models.keys())
     # 通过排序，来进行对应
     model_names.sort()
-    # 打印CSV header
-    header = ["line_num"]
-    for name in model_names : 
-        header += [name + "_batch_min_sim", name + "_batch_max_sim", name + "_batch_summeam_sim", name + "_batch_mean_sim"]
-    print(','.join(header))
+
     #jsonify = lambda x: json.dumps(x, ensure_ascii=False)
     # 每次处理多少行的数据
     batch_line_size = LINE_BATCH_SIZE
@@ -294,8 +310,9 @@ if __name__ == '__main__':
                 index_process.append(index)
                 if line_count == batch_line_size:
                     break
-            except Exception:
-                print( str(index) + ": IndexLineReadError")
+            except Exception as e:
+                logger.exception(e)
+                logger.error(str(index) + ": IndexLineReadError")
         
         # 没有可读的行时，进行退出程序
         if line_num_start == line_num:
@@ -308,5 +325,5 @@ if __name__ == '__main__':
                     for name in model_names: sim_score += result[i][name]
                     print(str(index_process[i]) + "," + ','.join([ str(score) for score in sim_score ]))
             except Exception as e:
-                print(e, file=sys.stderr)
-                print(",".join([str(num) for num in index_process]) + ": IndexLineFeatureError")
+                logger.exception(e)
+                logger.error(",".join([str(num) for num in index_process]) + ": IndexLineFeatureError")
