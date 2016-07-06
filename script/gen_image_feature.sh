@@ -13,5 +13,5 @@ pv --rate -i 5 \
 }
 
 # Generate image feature for training data set and testing data set
-cat ../data/data_files/image_itemPairs_train.csv | work > ../data/data_files/image_feature_train.csv
-cat ../data/data_files/image_itemPairs_test.csv | work > ../data/data_files/image_feature_test.csv
+cat ../data/data_files/image_itemPairs_train.csv | work > ../data/data_files/image_feature_train_128.csv
+cat ../data/data_files/image_itemPairs_test.csv | work > ../data/data_files/image_feature_test_128.csv

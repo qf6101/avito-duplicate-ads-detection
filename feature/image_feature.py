@@ -76,10 +76,15 @@ def compare_images(left_img_locs, right_img_locs):
     """
     Compare image similarity with histogram difference (USE OTHER SIMILARITY MEASURES HERE)
     """
-    hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
-    hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
-    hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
-    return hist_diff_8bins + hist_diff_32bins + hist_diff_64bins
+    # temporally comment 8~64bins
+    # hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
+    # hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
+    # hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
+    hist_diff_8bins = [0.0, 0.0, 0.0]
+    hist_diff_32bins = [0.0, 0.0, 0.0]
+    hist_diff_64bins = [0.0, 0.0, 0.0]
+    hist_diff_128bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_128bins)
+    return hist_diff_8bins + hist_diff_32bins + hist_diff_64bins + hist_diff_128bins
 
 
 def gen_image_feature(left_img_arrays, right_img_arrays):
@@ -87,7 +92,7 @@ def gen_image_feature(left_img_arrays, right_img_arrays):
     Generate image feature for two images arrays
     """
     if len(left_img_arrays) <= 0 or len(right_img_arrays) <= 0:
-        return [np.nan] * 9
+        return [np.nan] * 12
     else:
         left_img_locs = batch_image_location(left_img_arrays.split(","))
         right_img_locs = batch_image_location(right_img_arrays.split(","))
@@ -131,6 +136,13 @@ def calc_hist_diff_64bins(left_img, right_img):
     return calc_hist_diff(left_img, right_img, 64)
 
 
+def calc_hist_diff_128bins(left_img, right_img):
+    """
+    Calculate histogram difference of two images with 64 bins
+    """
+    return calc_hist_diff(left_img, right_img, 128)
+
+
 if __name__ == '__main__':
     """ Generate image feature in parallel
         Input is from stdin, output is to stdout
@@ -145,7 +157,7 @@ if __name__ == '__main__':
         line = json.loads(line.rstrip())
         left_item = line['images_array_1']
         right_item = line['images_array_2']
-        min_hist_diff_8bins, max_hist_diff_8bins, avg_hist_diff_8bins, min_hist_diff_32bins, max_hist_diff_32bins, avg_hist_diff_32bins, min_hist_diff_64bins, max_hist_diff_64bins, avg_hist_diff_64bins, = gen_image_feature(
+        min_hist_diff_8bins, max_hist_diff_8bins, avg_hist_diff_8bins, min_hist_diff_32bins, max_hist_diff_32bins, avg_hist_diff_32bins, min_hist_diff_64bins, max_hist_diff_64bins, avg_hist_diff_64bins, min_hist_diff_128bins, max_hist_diff_128bins, avg_hist_diff_128bins = gen_image_feature(
             left_item, right_item)
         res = OrderedDict([
             ('min_hist_diff_8bins', min_hist_diff_8bins),
@@ -157,5 +169,8 @@ if __name__ == '__main__':
             ('min_hist_diff_64bins', min_hist_diff_64bins),
             ('max_hist_diff_64bins', max_hist_diff_64bins),
             ('avg_hist_diff_64bins', avg_hist_diff_64bins),
+            ('min_hist_diff_128bins', min_hist_diff_128bins),
+            ('max_hist_diff_128bins', max_hist_diff_128bins),
+            ('avg_hist_diff_128bins', avg_hist_diff_128bins),
         ])
         print(jsonify(res))
