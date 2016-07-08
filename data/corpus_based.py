@@ -621,6 +621,19 @@ title_word2vec_ruscorpora = Word2VecModel('title_word2vec_ruscorpora', title_wor
 description_word2vec_ruscorpora = Word2VecModel('description_word2vec_ruscorpora', description_word_dtm_0_1,
                                                 word2vec_model_ruscorpora)
 
+description_sentence_word2vec_web = Word2VecModel('description_sentence_word2vec_web', description_sentence_word_dtm_0, word2vec_model_web)
+description_sentence_word2vec_news = Word2VecModel('description_sentence_word2vec_news', description_sentence_word_dtm_0, word2vec_model_news)
+description_sentence_word2vec_ruwikiruscorpora = Word2VecModel('description_sentence_word2vec_ruwikiruscorpora', description_sentence_word_dtm_0, word2vec_model_ruwikiruscorpora)
+description_sentence_word2vec_ruscorpora = Word2VecModel('description_sentence_word2vec_ruscorpora', description_sentence_word_dtm_0, word2vec_model_ruscorpora)
+description_sentence__word2vec__agg_cosine = AggregatedCosineSimilarityFeature(
+    'description_sentence__word2vec__agg_cosine',
+    [description_sentence_word2vec_web, description_sentence_word2vec_news, description_sentence_word2vec_ruwikiruscorpora, description_sentence_word2vec_ruscorpora],
+    description_sentence_range,
+    dtm_transformer=None,
+    dtm_transformer_name=''
+)
+
+
 ## lsa
 title_word_lsa_0_1 = RepresentationModel('title_word_lsa_0_1', title_word_dtm_0_1,
                                          model=TruncatedSVD(n_components=100, n_iter=20, random_state=0),
@@ -726,7 +739,7 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, title_word_1_2gram_dtm_0_predict_log_price,
                  title_description_dtm_0_predict_log_price, word2vec_cosine,
-                 description_sentence__binary__agg_cosine,
+                 description_sentence__binary__agg_cosine, description_sentence__word2vec__agg_cosine
                  ]
 
 
