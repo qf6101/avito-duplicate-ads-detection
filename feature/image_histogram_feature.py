@@ -129,7 +129,7 @@ def calc_hist_diff_128bins(left_img, right_img):
     """
     return calc_hist_diff(left_img, right_img, 128)
 
-header = ['index', 'min_hist_diff_8bins', 'max_hist_diff_8bins', 'avg_hist_diff_8bins', 'min_hist_diff_32bins', 'max_hist_diff_32bins', 'avg_hist_diff_32bins', 'min_hist_diff_64bins', 'max_hist_diff_64bins', 'avg_hist_diff_64bins', 'min_hist_diff_128bins', 'max_hist_diff_128bins', 'avg_hist_diff_128bins']
+header = ['index'] + ['image_{}_hist_diff_{}bins'.format(j,i) for i in [8,32,64,128] for j in ['min', 'max', 'avg']]
 
 if __name__ == '__main__':
     """ Generate image feature in parallel
