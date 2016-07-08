@@ -7,6 +7,7 @@ import sys
 import mxnet as mx
 from config import config
 from skimage.color import gray2rgb
+from .util import image_path
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -14,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG,
                     filename='mxnet_feature.log',
                     filemode='a')
 
-logger = logging.getLogger("mxnet_feature")
+logger = logging.getLogger("image_mxnet_feature")
 
 # __all__ = [ 'mxnet_model_parent_dir', 'mxnet_model_dir_prefix', 'mxnet_mean_img_path', 'init_models', 'batch_image_mxnet_feature', 'compare_images_batch', 'cos_sim']
 
@@ -142,23 +143,13 @@ def batch_image_mxnet_feature(img_ids, models, means):
             img_id = img_ids[i]
             result_dict[img_id][model_name] =  global_pooling_feature[i,:,0,0]
     return result_dict
-            
-        
-# 根据图片ID获得图片的具体路径
-def image_location(image_id):
-    """
-    Get image location from image ID
-    """
-    first_index = str(int(int(image_id) % 100 / 10))
-    second_index = str(int(image_id) % 100)
-    return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
 
 # 批量获得图片路径
 def batch_image_location(image_ids):
     """
     Get images location from image IDs
     """
-    img_locs = [ image_location(img_id) for img_id in image_ids ]
+    img_locs = [image_path(img_id) for img_id in image_ids]
     return img_locs
 
 #@profile

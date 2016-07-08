@@ -1,24 +1,14 @@
-from PIL import Image
-import imagehash
-from util import binary_matrix_to_int, jaccard
-from config import config
-from sklearn.metrics.pairwise import pairwise_distances
-import numpy as np
-
-images_dir = config['image_root']
-
 import logging
 
+import imagehash
+import numpy as np
+from PIL import Image
+from sklearn.metrics.pairwise import pairwise_distances
+
+from util import binary_matrix_to_int, jaccard
+from .util import image_path
 logger = logging.getLogger('image_hash_feature')
 
-
-def image_path(image_id):
-    """
-    Get image location from image ID
-    """
-    first_index = str(int(int(image_id) % 100 / 10))
-    second_index = str(int(image_id) % 100)
-    return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
 
 def whash_(image):
     ''' bypass assert for small image '''

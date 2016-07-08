@@ -1,28 +1,16 @@
 import cv2
 import numpy as np
 import logging
-import sys
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S',
-                    filename='image_feature.log',
+                    filename='image_histogram_feature.log',
                     filemode='a')
 
-__all__ = ['image_location', 'batch_image_location', 'gen_image_feature', 'compare_images']
+__all__ = ['image_path', 'batch_image_location', 'gen_image_feature', 'compare_images']
 
-# root of image locations
-images_dir = "/srv/data/0/ticktock/competition/kaggle/avito-duplicate-ads-detection/data/images"
-
-
-def image_location(image_id):
-    """
-    Get image location from image ID
-    """
-    first_index = str(int(int(image_id) % 100 / 10))
-    second_index = str(int(image_id) % 100)
-    return ''.join([images_dir, "/Images_", first_index, "/", second_index, "/", str(image_id).strip(), ".jpg"])
-
+from .util import image_path
 
 def batch_image_location(image_ids):
     """
@@ -30,7 +18,7 @@ def batch_image_location(image_ids):
     """
     img_locs = []
     for img_id in image_ids:
-        img_locs.append(image_location(img_id))
+        img_locs.append(image_path(img_id))
     return img_locs
 
 
@@ -76,13 +64,9 @@ def compare_images(left_img_locs, right_img_locs):
     """
     Compare image similarity with histogram difference (USE OTHER SIMILARITY MEASURES HERE)
     """
-    # temporally comment 8~64bins
-    # hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
-    # hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
-    # hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
-    hist_diff_8bins = (0.0, 0.0, 0.0)
-    hist_diff_32bins = (0.0, 0.0, 0.0)
-    hist_diff_64bins = (0.0, 0.0, 0.0)
+    hist_diff_8bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_8bins)
+    hist_diff_32bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_32bins)
+    hist_diff_64bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_64bins)
     hist_diff_128bins = compare_images_with(left_img_locs, right_img_locs, calc_hist_diff_128bins)
     return hist_diff_8bins + hist_diff_32bins + hist_diff_64bins + hist_diff_128bins
 
