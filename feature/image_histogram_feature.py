@@ -34,12 +34,12 @@ def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
     for l_img_loc in left_img_locs:
         img_diff = -sys.maxsize
         left_img = cv2.imread(l_img_loc)
-        if left_img is None:
+        if left_img is None or left_img.size<30:#image is empty or too small
             logging.error("None image: >>>>>>>>" + l_img_loc)
             continue
         for r_img_loc in right_img_locs:
             right_img = cv2.imread(r_img_loc)
-            if right_img is None:
+            if right_img is None or right_img.size<30:#image is empty or too small
                 logging.error("None image: >>>>>>>>" + r_img_loc)
                 continue
             diff = comp_func(left_img, right_img)
@@ -50,7 +50,10 @@ def compare_images_from_minority(left_img_locs, right_img_locs, comp_func):
         if batch_max_diff < img_diff:
             batch_max_diff = img_diff
         sum_diff += img_diff
-    return batch_min_diff, batch_max_diff, sum_diff / len(left_img_locs)
+    if batch_max_diff == -sys.maxsize or batch_min_diff==sys.maxsize:
+        return (np.nan,) * 3
+    else:
+        return batch_min_diff, batch_max_diff, sum_diff / len(left_img_locs)
 
 
 def compare_images_with(left_img_locs, right_img_locs, comp_func):
@@ -126,7 +129,7 @@ def calc_hist_diff_128bins(left_img, right_img):
     """
     return calc_hist_diff(left_img, right_img, 128)
 
-header = ['min_hist_diff_8bins', 'max_hist_diff_8bins', 'avg_hist_diff_8bins', 'min_hist_diff_32bins', 'max_hist_diff_32bins', 'avg_hist_diff_32bins', 'min_hist_diff_64bins', 'max_hist_diff_64bins', 'avg_hist_diff_64bins', 'min_hist_diff_128bins', 'max_hist_diff_128bins', 'avg_hist_diff_128bins']
+header = ['index', 'min_hist_diff_8bins', 'max_hist_diff_8bins', 'avg_hist_diff_8bins', 'min_hist_diff_32bins', 'max_hist_diff_32bins', 'avg_hist_diff_32bins', 'min_hist_diff_64bins', 'max_hist_diff_64bins', 'avg_hist_diff_64bins', 'min_hist_diff_128bins', 'max_hist_diff_128bins', 'avg_hist_diff_128bins']
 
 if __name__ == '__main__':
     """ Generate image feature in parallel
@@ -134,7 +137,6 @@ if __name__ == '__main__':
     """
     import sys
     import json
-    from collections import OrderedDict
 
     jsonify = lambda x: json.dumps(x, ensure_ascii=False)
 
@@ -145,4 +147,4 @@ if __name__ == '__main__':
         res = gen_image_feature(
             left_item, right_item)
 
-        print(','.join(map(str, res)))
+        print(line['index']+','+','.join(map(str, res)))
