@@ -739,7 +739,7 @@ diff_term_idf_features = DiffTermIdfFeature('diff_term_idf_features',
 feature_nodes = [cosine_similarity_features, cosine_similarity_features_2,
                  diff_term_idf_features, title_word_1_2gram_dtm_0_predict_log_price,
                  title_description_dtm_0_predict_log_price, word2vec_cosine,
-                 description_sentence__binary__agg_cosine, description_sentence__word2vec__agg_cosine
+                 description_sentence__binary__agg_cosine
                  ]
 
 
