@@ -15,7 +15,7 @@ def char_jaccard_ngram(a, b, n):
     return jaccard(char_ngrams(a, (n, n), binary=True), char_ngrams(b, (n, n), binary=True))
 
 
-def create_numeric_comparision(feats, a, b, name):
+def create_numeric_comparison(feats, a, b, name):
     # min(nan, 1) = 1
     feats[name + '_min'] = min(a, b)
     feats[name + '_max'] = max(a, b)
@@ -30,7 +30,7 @@ def ncf(data_x, data_y, compressor ="lzma", compressor_kargs = None, precompress
         #print "Using ZLIB"
         from zlib import compress
         from zlib import decompress
-    elif compressor == "bz2":
+    elif compressor == "bz2":,
         #print "Using BZIP"
         from bz2 import compress
         from bz2 import decompress
@@ -67,17 +67,17 @@ def gen_simple_feature(a, b):
     feats['same_lat_lon'] = (a['lat'] == b['lat']) and (a['lon'] == b['lon'])
     feats['location_distance'] = ((a['lat'] - b['lat']) ** 2 + (a['lon'] - b['lon']) ** 2) ** (1 / 2)
 
-    create_numeric_comparision(feats, a['price'], b['price'], 'price')
+    create_numeric_comparison(feats, a['price'], b['price'], 'price')
     try:
-        create_numeric_comparision(feats, len(a['title']), len(b['title']), 'title_length')
+        create_numeric_comparison(feats, len(a['title']), len(b['title']), 'title_length')
     except TypeError:
         pass
     try:
-        create_numeric_comparision(feats, len(a['description']), len(b['description']), 'description_length')
+        create_numeric_comparison(feats, len(a['description']), len(b['description']), 'description_length')
     except TypeError:
         pass
     try:
-        create_numeric_comparision(feats, len(a['images_array']), len(b['images_array']), 'images_count')
+        create_numeric_comparison(feats, len(a['images_array']), len(b['images_array']), 'images_count')
     except TypeError:
         pass
 
