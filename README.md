@@ -4,7 +4,7 @@ code and solution for [kaggle: Avito Duplicate Ads Detection](https://www.kaggle
 
 ## solution
 
-Please read [solution.md]()
+Please read [solution.md](solution.md)
 
 ## environment setup
 
