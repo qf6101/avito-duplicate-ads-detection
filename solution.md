@@ -72,9 +72,10 @@ Additionally
 
 ### vector space based text features
 
-There are 110 features in this category based on title and description. The exact process is a bit complicated and messy . Since the total improvement of these features is not big enough, we only give a rough description about there features here. Please refer to feature.corpus_based.py for detail, where we use a make like system to manage data dependency.
+There are 110 features in this category based on title and description. The exact process is a bit complicated and messy . Since the total improvement of these features is not big enough, we only give a rough description about there features here. Please refer to [feature/corpus_based.py](feature/corpus_based.py) for detail, where we use a make like system to manage data dependency.
 
 The rough process is following
+
 1. tokenzie text: with or without stemming
 2. generate bag of word Representation of title and description; 2, 3 gram are generate for title
 3. use LSI and nmf to represent text in dense VectorSimilarityFeatureBase
