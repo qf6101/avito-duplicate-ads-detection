@@ -323,8 +323,10 @@ from . import dir_here
 import os
 
 
+from config import config
+word2vec_model_path_root = config['RusVectōrēs_root']
 def get_word2vec_model_file(name):
-    return os.path.join(dir_here, '../external_model/RusVectōrēs', name + '.model.bin.gz')
+    return os.path.join(dir_here, word2vec_model_path_root, name + '.model.bin.gz')
 
 
 word2vec_model_web = RootNode([get_word2vec_model_file('web')])
