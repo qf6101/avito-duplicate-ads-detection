@@ -72,7 +72,7 @@ Additionally
 
 ### vector space based text features
 
-There are 110 features in this category based on title and description. The exact process is a bit complicated and messy . Since the total improvement of these features is not big enough, we only give a rough description about there features here. Please refer to [feature/corpus_based.py](feature/corpus_based.py) for detail, where we use a make like system to manage data dependency.
+There are 110 features in this category based on title and description. The exact process is a bit complicated and messy . Since the total improvement of these features is not big enough, we only give a rough description about there features here. Please refer to [feature/corpus_based.py](feature/corpus_based.py) for detail, where we use [a make like system](https://github.com/luoq/datatrek/blob/master/datatrek/make.py) to manage data dependency.
 
 The rough process is following
 

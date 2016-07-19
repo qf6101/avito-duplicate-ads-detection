@@ -18,6 +18,7 @@ A lot of extra libraries are needed to run this code, an incomprehensive list is
   * nltk
   * [pystemmer](https://github.com/snowballstem/pystemmer)
   * [python-Levenshtein](https://pypi.python.org/pypi/python-Levenshtein)
+  * [datatrek](https://github.com/luoq/datatrek): some self made utility code
 * xgboost with python interface
 * mxnet with python interface
 
