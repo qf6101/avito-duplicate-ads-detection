@@ -30,7 +30,7 @@ def ncf(data_x, data_y, compressor ="lzma", compressor_kargs = None, precompress
         #print "Using ZLIB"
         from zlib import compress
         from zlib import decompress
-    elif compressor == "bz2":,
+    elif compressor == "bz2":
         #print "Using BZIP"
         from bz2 import compress
         from bz2 import decompress
