@@ -1,0 +1,7 @@
+model,features,test set,public leaderboard,gap
+xgboost.26.weighted,all,0.95606,0.91957,0.03649
+xgboost.27.weighted,-image,0.92991,0.86827,0.06164
+xgboost.28.weighted,"-image, -corpus",0.922269,0.85488,0.067389
+Xgboost.29.weighted, -corpus,0.952553,0.91441,0.038143
+lr_text.1,title_description_dtm_0,0.7935702942,0.64333,0.1502402942
+Xgboost.31.weighted,+description_sentence__binary__agg_cosine,0.956172,0.91963,0.036542
