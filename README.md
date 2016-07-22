@@ -6,6 +6,10 @@ code and solution for [kaggle: Avito Duplicate Ads Detection](https://www.kaggle
 
 Please read [solution.md](solution.md)
 
+## slide
+
+[A slide to discuss this solution](https://luoq.github.io/slide/avito-duplicate-ads-detection_review.html)
+
 ## environment setup
 
 The base environment is linux with [Anaconda3](https://www.continuum.io/downloads)
