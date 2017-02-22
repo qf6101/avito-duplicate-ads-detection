@@ -1,6 +1,10 @@
-# kaggle competition solution: avito-duplicate-ads-detection
+## kaggle competition solution: avito-duplicate-ads-detection
 
-code and solution for [kaggle: Avito Duplicate Ads Detection](https://www.kaggle.com/c/avito-duplicate-ads-detection) (team luoq)
+code and solution for [kaggle: Avito Duplicate Ads Detection](https://www.kaggle.com/c/avito-duplicate-ads-detection) 
+
+## leaderboard rank
+
+Final leaderboard: 14/548 (qfeng in team luoq)
 
 ## detailed solution
 
