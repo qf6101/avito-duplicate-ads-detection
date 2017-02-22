@@ -1,8 +1,8 @@
-# avito-duplicate-ads-detection
+# kaggle competition solution: avito-duplicate-ads-detection
 
 code and solution for [kaggle: Avito Duplicate Ads Detection](https://www.kaggle.com/c/avito-duplicate-ads-detection) (team luoq)
 
-## solution
+## detailed solution
 
 Please read [solution.md](solution.md)
 
